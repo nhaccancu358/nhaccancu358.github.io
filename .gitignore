@@ -1,0 +1,6 @@
+cloudflared.exe
+*.vbs
+*.bat
+*.txt
+run_music_service.py
+__pycache__/

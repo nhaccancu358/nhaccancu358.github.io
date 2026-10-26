@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Chiến Kỷ 358 - Phá Lồng Ma Trận (Fire Emblem 358)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    touch-action: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }
+  #game-container {
+    position: relative;
+    width: 100vw;
+    max-width: 480px;
+    height: 100vh;
+    max-height: 850px;
+    background: #050811;
+    display: flex;
+    flex-direction: column;
+    border: 2px solid #30363d;
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.2);
+  }
+  /* Header Bar */
+  #header-bar {
+    height: 44px;
+    background: #161b22;
+    border-bottom: 2px solid #30363d;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    color: #58a6ff;
+  }
+  .phase-badge {
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 800;
+  }
+  .phase-player { background: #1f6feb; color: #fff; box-shadow: 0 0 10px #1f6feb; }
+  .phase-enemy { background: #da3633; color: #fff; box-shadow: 0 0 10px #da3633; }
+  
+  /* Canvas Area */
+  #canvas-wrapper {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #030712;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  /* Bottom Info Panel */
+  #info-panel {
+    height: 95px;
+    background: #161b22;
+    border-top: 2px solid #30363d;
+    display: flex;
+    padding: 6px 10px;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .info-box {
+    flex: 1;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .unit-avatar-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .avatar-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    background: #21262d;
+    border: 1px solid #58a6ff;
+  }
+  .hp-bar-bg {
+    width: 100%;
+    height: 7px;
+    background: #21262d;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 3px;
+  }
+  .hp-bar-fill {
+    height: 100%;
+    background: #238636;
+    transition: width 0.3s;
+  }
+
+  /* Control buttons */
+  #btn-end-turn {
+    background: linear-gradient(180deg, #238636, #196c2e);
+    color: white;
+    border: 1px solid #2ea043;
+    padding: 0 12px;
+    height: 30px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 11px;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(46, 160, 67, 0.4);
+  }
+  #btn-sound {
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  /* Modal Menu & Overlays */
+  .action-menu {
+    position: absolute;
+    background: rgba(22, 27, 34, 0.95);
+    border: 2px solid #58a6ff;
+    border-radius: 8px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 12px rgba(88, 166, 255, 0.4);
+    z-index: 100;
+  }
+  .action-menu button {
+    background: #21262d;
+    color: #e6edf3;
+    border: 1px solid #30363d;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .action-menu button:active { background: #388bfd; color: white; }
+
+  /* Battle Forecast Modal */
+  #forecast-modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 380px;
+    background: #161b22;
+    border: 2px solid #388bfd;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.9), 0 0 15px rgba(56, 139, 253, 0.5);
+    z-index: 110;
+    display: none;
+  }
+  .forecast-header {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: #58a6ff;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .forecast-cols {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .combatant-card {
+    flex: 1;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 8px;
+    text-align: center;
+  }
+  .vs-badge {
+    font-size: 16px;
+    font-weight: 900;
+    color: #da3633;
+    text-shadow: 0 0 8px red;
+  }
+  .forecast-stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    margin: 4px 0;
+    color: #8b949e;
+  }
+  .forecast-stat strong { color: #f0f6fc; }
+  .forecast-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .btn-fight {
+    flex: 1;
+    background: #da3633;
+    color: white;
+    border: none;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(218, 54, 51, 0.6);
+  }
+  .btn-cancel {
+    flex: 1;
+    background: #21262d;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  /* Phase Banner Notification */
+  #phase-banner {
+    position: absolute;
+    top: 40%;
+    left: 0;
+    width: 100%;
+    padding: 14px 0;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    transform: translateY(-50%) scale(0.8);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 150;
+    transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .banner-show { opacity: 1 !important; transform: translateY(-50%) scale(1) !important; }
+
+  /* Message overlay (Game Over / Win) */
+  #end-modal {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(5, 8, 17, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 20px;
+    text-align: center;
+    display: none;
+  }
+  #end-modal h1 { font-size: 26px; margin-bottom: 12px; }
+  #end-modal p { font-size: 14px; color: #8b949e; line-height: 1.6; margin-bottom: 20px; }
+  .btn-restart {
+    background: #238636;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 15px rgba(35, 134, 54, 0.6);
+  }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <!-- Header -->
+  <div id="header-bar">
+    <div>⚔️ CHIẾN KỶ 358</div>
+    <div id="phase-label" class="phase-badge phase-player">LƯỢT PHE TA</div>
+    <div style="display:flex; gap:6px;">
+      <button id="btn-sound" title="Bật/Tắt âm">🔊</button>
+      <button id="btn-end-turn">HẾT LƯỢT</button>
+    </div>
+  </div>
+
+  <!-- Battle Grid Canvas -->
+  <div id="canvas-wrapper">
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- Action Menu -->
+    <div id="action-menu" class="action-menu" style="display:none;">
+      <button id="btn-act-attack">⚔️ Tấn Công</button>
+      <button id="btn-act-heal" style="display:none;">💖 Hồi Máu</button>
+      <button id="btn-act-wait">🛡️ Đợi Lượt</button>
+      <button id="btn-act-cancel" style="color:#8b949e;">❌ Hủy</button>
+    </div>
+
+    <!-- Battle Forecast Modal -->
+    <div id="forecast-modal">
+      <div class="forecast-header">BẢNG DỰ ĐOÁN TÁC CHIẾN</div>
+      <div class="forecast-cols">
+        <div class="combatant-card" id="card-attacker">
+          <div style="font-size:22px;" id="fc-atk-icon">🐉</div>
+          <div style="font-weight:bold; color:#58a6ff;" id="fc-atk-name">Bi</div>
+          <div class="forecast-stat">HP: <strong id="fc-atk-hp">28/28</strong></div>
+          <div class="forecast-stat">Công (Mt): <strong id="fc-atk-dmg">14</strong></div>
+          <div class="forecast-stat">Trúng: <strong id="fc-atk-hit">95%</strong></div>
+          <div class="forecast-stat">Chí mạng: <strong id="fc-atk-crit">10%</strong></div>
+        </div>
+        <div class="vs-badge">VS</div>
+        <div class="combatant-card" id="card-defender">
+          <div style="font-size:22px;" id="fc-def-icon">🧟</div>
+          <div style="font-weight:bold; color:#f85149;" id="fc-def-name">NPC</div>
+          <div class="forecast-stat">HP: <strong id="fc-def-hp">18/18</strong></div>
+          <div class="forecast-stat">Công: <strong id="fc-def-dmg">6</strong></div>
+          <div class="forecast-stat">Trúng: <strong id="fc-def-hit">65%</strong></div>
+          <div class="forecast-stat">Chí mạng: <strong id="fc-def-crit">0%</strong></div>
+        </div>
+      </div>
+      <div class="forecast-actions">
+        <button class="btn-fight" id="btn-confirm-fight">CHIẾN!</button>
+        <button class="btn-cancel" id="btn-cancel-fight">HỦY</button>
+      </div>
+    </div>
+
+    <!-- Phase Banner -->
+    <div id="phase-banner">PLAYER PHASE</div>
+
+    <!-- End Game Modal -->
+    <div id="end-modal">
+      <h1 id="end-title">THẮNG LỢI!</h1>
+      <p id="end-desc">Khối Lập Phương Đen ma trận đã bị đập vỡ vụn! Bản thể Rồng Cổ và Mèo Cổ cùng Cú Mèo đã giải phóng toàn bộ vùng đất.</p>
+      <button class="btn-restart" onclick="restartGame()">CHƠI LẠI TỪ ĐẦU</button>
+    </div>
+  </div>
+
+  <!-- Bottom Info Panel -->
+  <div id="info-panel">
+    <div class="info-box" id="unit-info-box">
+      <div class="unit-avatar-box">
+        <div class="avatar-icon" id="info-avatar">🐉</div>
+        <div style="flex:1;">
+          <div style="font-weight:bold; color:#58a6ff;" id="info-name">Bi (Rồng Cổ)</div>
+          <div style="font-size:10px; color:#8b949e;" id="info-weapon">Cờ-lê Cơ Khí (Tầm 1)</div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex; justify-content:space-between; font-size:10px;">
+          <span>HP</span>
+          <span id="info-hp-text">28 / 28</span>
+        </div>
+        <div class="hp-bar-bg"><div class="hp-bar-fill" id="info-hp-bar" style="width:100%;"></div></div>
+      </div>
+    </div>
+    <div class="info-box" style="flex:0.8;" id="tile-info-box">
+      <div style="font-weight:bold; color:#7ee787;" id="tile-name">Đồng Bằng</div>
+      <div style="font-size:11px; color:#8b949e; margin-top:2px;" id="tile-desc">Né: +0% | Thủ: +0</div>
+      <div style="font-size:10px; color:#58a6ff; margin-top:4px;" id="turn-counter">Lượt: 1/15</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- AUDIO SYNTHESIS VIA WEB AUDIO API (100% RETRO 8-BIT) ---
+let audioCtx = null;
+let soundEnabled = true;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+}
+
+function playTone(freq, type, duration, vol=0.1) {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch(e) {}
+}
+
+const SFX = {
+  select() { playTone(587.33, 'triangle', 0.08, 0.1); },
+  move() { playTone(329.63, 'sine', 0.06, 0.08); },
+  hit() {
+    playTone(130.81, 'sawtooth', 0.2, 0.2);
+    setTimeout(() => playTone(82.41, 'square', 0.25, 0.25), 50);
+  },
+  crit() {
+    playTone(880, 'square', 0.1, 0.25);
+    setTimeout(() => playTone(1174.66, 'square', 0.15, 0.25), 80);
+    setTimeout(() => playTone(1760, 'sawtooth', 0.3, 0.3), 160);
+  },
+  heal() {
+    [523, 659, 783, 1046].forEach((f, i) => {
+      setTimeout(() => playTone(f, 'sine', 0.2, 0.15), i * 70);
+    });
+  },
+  phasePlayer() {
+    [440, 554, 659].forEach((f, i) => setTimeout(() => playTone(f, 'triangle', 0.25, 0.2), i * 100));
+  },
+  phaseEnemy() {
+    [330, 293, 220].forEach((f, i) => setTimeout(() => playTone(f, 'sawtooth', 0.3, 0.2), i * 120));
+  }
+};
+
+// --- GAME LOGIC & MAP SPECS ---
+const COLS = 8;
+const ROWS = 9;
+let TILE_SIZE = 48;
+
+// Terrain Types
+// 0: Plains (Đồng Bằng)
+// 1: Forest (Rừng - Thủ +1, Né +20%, Tốn 2 đi)
+// 2: Mountain (Đồi Núi - Thủ +2, Né +30%, Chỉ bộ binh leo được)
+// 3: Fort (Căn Cứ / Đài Năng Lượng - Hồi 20% HP, Thủ +2, Né +20%)
+const TERRAIN_MAP = [
+  [0, 1, 0, 0, 2, 2, 0, 0],
+  [0, 1, 1, 0, 0, 2, 0, 0],
+  [0, 0, 0, 3, 0, 0, 1, 0],
+  [2, 0, 0, 0, 0, 1, 1, 0],
+  [2, 2, 0, 1, 0, 0, 0, 0],
+  [0, 0, 0, 1, 1, 0, 3, 0],
+  [0, 1, 0, 0, 0, 0, 0, 0],
+  [0, 1, 1, 0, 0, 2, 0, 1],
+  [0, 0, 0, 0, 2, 2, 0, 0]
+];
+
+const TERRAIN_INFO = {
+  0: { name: "Đồng Bằng", def: 0, avo: 0, cost: 1, color: "#1b4d3e" },
+  1: { name: "Rừng Trà", def: 1, avo: 20, cost: 2, color: "#0f3322" },
+  2: { name: "Đồi Núi", def: 2, avo: 30, cost: 3, color: "#3d3221" },
+  3: { name: "Đài 432Hz", def: 2, avo: 20, cost: 1, heal: 0.2, color: "#004754" }
+};
+
+// Unit Definitions
+class Unit {
+  constructor(id, name, icon, team, x, y, maxHp, atk, def, spd, move, weapon, minR, maxR, special=null) {
+    this.id = id;
+    this.name = name;
+    this.icon = icon;
+    this.team = team; // 'player' | 'enemy'
+    this.x = x;
+    this.y = y;
+    this.maxHp = maxHp;
+    this.hp = maxHp;
+    this.atk = atk;
+    this.def = def;
+    this.spd = spd;
+    this.move = move;
+    this.weapon = weapon;
+    this.minRange = minR;
+    this.maxRange = maxR;
+    this.special = special;
+    this.hasActed = false;
+    this.originalPos = { x, y };
+  }
+}
+
+let units = [];
+let currentPhase = 'player'; // 'player' | 'enemy'
+let turnCount = 1;
+let selectedUnit = null;
+let moveTiles = [];
+let attackTiles = [];
+let healTiles = [];
+let targetEnemy = null;
+let targetAlly = null;
+let actionState = 'IDLE'; // 'IDLE', 'SELECTED', 'TARGET_ATTACK', 'TARGET_HEAL'
+
+function initUnits() {
+  units = [
+    // Phe ta (358)
+    new Unit('bi', 'Bi (Rồng Cổ)', '🐉', 'player', 2, 7, 28, 12, 9, 6, 4, 'Cờ-lê Khổng Lồ', 1, 1),
+    new Unit('hanh', 'Hạnh (Mèo Cổ)', '🐱', 'player', 3, 8, 22, 10, 5, 10, 5, 'Sóng Âm 432Hz', 1, 2, 'HEAL'),
+    new Unit('thao', 'Cú Mèo Thảo', '🦉', 'player', 1, 8, 20, 9, 4, 8, 4, 'Cung Xoài Xanh', 2, 3),
+
+    // Phe Ma Trận
+    new Unit('zombie1', 'NPC Công Sở', '🧟', 'enemy', 2, 3, 16, 7, 3, 4, 3, 'Bẫy KPI', 1, 1),
+    new Unit('drone1', 'Drone 5G', '🛰️', 'enemy', 5, 2, 14, 8, 2, 7, 4, 'Sóng Vi Ba', 2, 2),
+    new Unit('reptile', 'Bò Sát Ngầm', '🦎', 'enemy', 4, 1, 22, 11, 7, 5, 3, 'Giáo Plasma', 1, 1),
+    new Unit('boss', 'Khối Lập Phương', '⬛', 'enemy', 3, 2, 36, 13, 8, 3, 1, 'Trường Ma Trận', 1, 2)
+  ];
+}
+
+// Canvas & Display elements
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const phaseBanner = document.getElementById('phase-banner');
+const phaseLabel = document.getElementById('phase-label');
+const actionMenu = document.getElementById('action-menu');
+const forecastModal = document.getElementById('forecast-modal');
+
+function resizeCanvas() {
+  const wrapper = document.getElementById('canvas-wrapper');
+  const w = wrapper.clientWidth;
+  const h = wrapper.clientHeight;
+  TILE_SIZE = Math.floor(Math.min(w / COLS, h / ROWS));
+  canvas.width = COLS * TILE_SIZE;
+  canvas.height = ROWS * TILE_SIZE;
+  render();
+}
+window.addEventListener('resize', resizeCanvas);
+
+// --- TILE & SPRITE RENDERING ---
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 1. Draw Terrain Map
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const type = TERRAIN_MAP[r][c];
+      const info = TERRAIN_INFO[type];
+      
+      ctx.fillStyle = info.color;
+      ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+
+      // Grid borders
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.07)";
+      ctx.strokeRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+
+      // Terrain decorations
+      if (type === 1) { // Forest
+        ctx.fillStyle = "rgba(0, 255, 100, 0.15)";
+        ctx.beginPath();
+        ctx.arc(c * TILE_SIZE + TILE_SIZE/2, r * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/3, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 2) { // Mountain
+        ctx.fillStyle = "rgba(200, 160, 100, 0.2)";
+        ctx.beginPath();
+        ctx.moveTo(c * TILE_SIZE + TILE_SIZE/2, r * TILE_SIZE + 4);
+        ctx.lineTo(c * TILE_SIZE + 6, r * TILE_SIZE + TILE_SIZE - 4);
+        ctx.lineTo(c * TILE_SIZE + TILE_SIZE - 6, r * TILE_SIZE + TILE_SIZE - 4);
+        ctx.closePath();
+        ctx.fill();
+      } else if (type === 3) { // Fort
+        ctx.strokeStyle = "#00f0ff";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(c * TILE_SIZE + 6, r * TILE_SIZE + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+        ctx.lineWidth = 1;
+      }
+    }
+  }
+
+  // 2. Movement & Attack Range Highlights
+  if (selectedUnit && currentPhase === 'player') {
+    // Movement tiles (Blue)
+    ctx.fillStyle = "rgba(31, 111, 235, 0.4)";
+    moveTiles.forEach(t => {
+      ctx.fillRect(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      ctx.strokeStyle = "#58a6ff";
+      ctx.strokeRect(t.x * TILE_SIZE + 1, t.y * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+    });
+
+    // Attack tiles (Red)
+    ctx.fillStyle = "rgba(218, 54, 51, 0.45)";
+    attackTiles.forEach(t => {
+      ctx.fillRect(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      ctx.strokeStyle = "#f85149";
+      ctx.strokeRect(t.x * TILE_SIZE + 1, t.y * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+    });
+
+    // Heal tiles (Green)
+    ctx.fillStyle = "rgba(46, 160, 67, 0.45)";
+    healTiles.forEach(t => {
+      ctx.fillRect(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      ctx.strokeStyle = "#7ee787";
+      ctx.strokeRect(t.x * TILE_SIZE + 1, t.y * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+    });
+  }
+
+  // 3. Draw Units
+  units.forEach(u => {
+    const px = u.x * TILE_SIZE;
+    const py = u.y * TILE_SIZE;
+
+    // Unit Aura / Ring
+    ctx.beginPath();
+    ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, TILE_SIZE * 0.42, 0, Math.PI * 2);
+    if (u.team === 'player') {
+      ctx.fillStyle = u.hasActed ? "rgba(100, 100, 100, 0.4)" : "rgba(31, 111, 235, 0.45)";
+      ctx.strokeStyle = u.hasActed ? "#6e7681" : "#58a6ff";
+    } else {
+      ctx.fillStyle = "rgba(218, 54, 51, 0.45)";
+      ctx.strokeStyle = "#f85149";
+    }
+    ctx.lineWidth = 2;
+    ctx.fill();
+    ctx.stroke();
+
+    // Unit Emoji Icon
+    ctx.font = `${Math.floor(TILE_SIZE * 0.55)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(u.icon, px + TILE_SIZE/2, py + TILE_SIZE/2 - 2);
+
+    // Mini HP Bar under unit
+    const barW = TILE_SIZE * 0.75;
+    const barH = 4;
+    const barX = px + (TILE_SIZE - barW) / 2;
+    const barY = py + TILE_SIZE - 8;
+
+    ctx.fillStyle = "#21262d";
+    ctx.fillRect(barX, barY, barW, barH);
+    const fillRatio = Math.max(0, u.hp / u.maxHp);
+    ctx.fillStyle = fillRatio > 0.5 ? "#238636" : (fillRatio > 0.25 ? "#d29922" : "#da3633");
+    ctx.fillRect(barX, barY, barW * fillRatio, barH);
+  });
+
+  // Selected unit cursor frame
+  if (selectedUnit) {
+    const sx = selectedUnit.x * TILE_SIZE;
+    const sy = selectedUnit.y * TILE_SIZE;
+    ctx.strokeStyle = "#ffff00";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(sx + 2, sy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+    ctx.lineWidth = 1;
+  }
+}
+
+// --- PATHFINDING & RANGE CALCULATION (BFS) ---
+function getReachableTiles(unit) {
+  const visited = {};
+  const queue = [{ x: unit.x, y: unit.y, cost: 0 }];
+  visited[`${unit.x},${unit.y}`] = 0;
+  const reachable = [];
+
+  while (queue.length > 0) {
+    const curr = queue.shift();
+    const dirs = [{x:0, y:-1}, {x:0, y:1}, {x:-1, y:0}, {x:1, y:0}];
+
+    for (const d of dirs) {
+      const nx = curr.x + d.x;
+      const ny = curr.y + d.y;
+
+      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+
+      const tileCost = TERRAIN_INFO[TERRAIN_MAP[ny][nx]].cost;
+      const newCost = curr.cost + tileCost;
+
+      // Cannot pass through enemy
+      const blockingUnit = units.find(u => u.x === nx && u.y === ny && u.team !== unit.team);
+      if (blockingUnit) continue;
+
+      if (newCost <= unit.move) {
+        const key = `${nx},${ny}`;
+        if (visited[key] === undefined || newCost < visited[key]) {
+          visited[key] = newCost;
+          queue.push({ x: nx, y: ny, cost: newCost });
+          // Destination can't be occupied by ally
+          const isOccupied = units.some(u => u.x === nx && u.y === ny);
+          if (!isOccupied || (nx === unit.x && ny === unit.y)) {
+            reachable.push({ x: nx, y: ny });
+          }
+        }
+      }
+    }
+  }
+  return reachable;
+}
+
+function getAttackRangeTiles(unit, fromX = unit.x, fromY = unit.y) {
+  const tiles = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const dist = Math.abs(c - fromX) + Math.abs(r - fromY);
+      if (dist >= unit.minRange && dist <= unit.maxRange) {
+        tiles.push({ x: c, y: r });
+      }
+    }
+  }
+  return tiles;
+}
+
+// --- TOUCH & CLICK INTERACTION ---
+function getGridPos(evt) {
+  const rect = canvas.getBoundingClientRect();
+  const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+  const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+  const x = Math.floor((clientX - rect.left) / TILE_SIZE);
+  const y = Math.floor((clientY - rect.top) / TILE_SIZE);
+  return { x: Math.max(0, Math.min(COLS - 1, x)), y: Math.max(0, Math.min(ROWS - 1, y)) };
+}
+
+canvas.addEventListener('click', onCanvasClick);
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  onCanvasClick(e);
+}, { passive: false });
+
+function onCanvasClick(e) {
+  initAudio();
+  if (currentPhase !== 'player') return;
+
+  const pos = getGridPos(e);
+  const clickedUnit = units.find(u => u.x === pos.x && u.y === pos.y);
+  const tileInfo = TERRAIN_INFO[TERRAIN_MAP[pos.y][pos.x]];
+
+  // Update bottom info
+  updateBottomInfo(clickedUnit, tileInfo);
+
+  // STATE MACHINE HANDLING
+  if (actionState === 'TARGET_ATTACK') {
+    if (clickedUnit && clickedUnit.team === 'enemy') {
+      const inRange = attackTiles.some(t => t.x === clickedUnit.x && t.y === clickedUnit.y);
+      if (inRange) {
+        targetEnemy = clickedUnit;
+        showForecastModal(selectedUnit, targetEnemy);
+        return;
+      }
+    }
+    // Cancel attack targeting if clicked elsewhere
+    cancelTargeting();
+    return;
+  }
+
+  if (actionState === 'TARGET_HEAL') {
+    if (clickedUnit && clickedUnit.team === 'player' && clickedUnit !== selectedUnit) {
+      const inRange = healTiles.some(t => t.x === clickedUnit.x && t.y === clickedUnit.y);
+      if (inRange) {
+        executeHeal(selectedUnit, clickedUnit);
+        return;
+      }
+    }
+    cancelTargeting();
+    return;
+  }
+
+  // IDLE OR SELECTING UNIT
+  if (!selectedUnit) {
+    if (clickedUnit && clickedUnit.team === 'player' && !clickedUnit.hasActed) {
+      SFX.select();
+      selectedUnit = clickedUnit;
+      selectedUnit.originalPos = { x: clickedUnit.x, y: clickedUnit.y };
+      moveTiles = getReachableTiles(selectedUnit);
+      attackTiles = getAttackRangeTiles(selectedUnit);
+      actionState = 'SELECTED';
+      render();
+    }
+  } else {
+    // Already selected a unit, selecting destination tile
+    const canMove = moveTiles.some(t => t.x === pos.x && t.y === pos.y);
+    if (canMove) {
+      SFX.move();
+      selectedUnit.x = pos.x;
+      selectedUnit.y = pos.y;
+      openActionMenu(selectedUnit);
+    } else if (clickedUnit === selectedUnit) {
+      // Clicked on self -> open action menu at current spot
+      openActionMenu(selectedUnit);
+    } else if (clickedUnit && clickedUnit.team === 'player' && !clickedUnit.hasActed) {
+      // Switched to another ally
+      SFX.select();
+      selectedUnit.x = selectedUnit.originalPos.x;
+      selectedUnit.y = selectedUnit.originalPos.y;
+      selectedUnit = clickedUnit;
+      selectedUnit.originalPos = { x: clickedUnit.x, y: clickedUnit.y };
+      moveTiles = getReachableTiles(selectedUnit);
+      attackTiles = getAttackRangeTiles(selectedUnit);
+      render();
+    } else {
+      // Clicked invalid tile -> deselect
+      selectedUnit.x = selectedUnit.originalPos.x;
+      selectedUnit.y = selectedUnit.originalPos.y;
+      deselect();
+    }
+  }
+}
+
+function updateBottomInfo(unit, tile) {
+  if (unit) {
+    document.getElementById('info-avatar').innerText = unit.icon;
+    document.getElementById('info-name').innerText = unit.name;
+    document.getElementById('info-weapon').innerText = `${unit.weapon} (Tầm ${unit.minRange}-${unit.maxRange})`;
+    document.getElementById('info-hp-text').innerText = `${unit.hp} / ${unit.maxHp}`;
+    document.getElementById('info-hp-bar').style.width = `${(unit.hp / unit.maxHp)*100}%`;
+  }
+  if (tile) {
+    document.getElementById('tile-name').innerText = tile.name;
+    document.getElementById('tile-desc').innerText = `Né: +${tile.avo}% | Thủ: +${tile.def}`;
+  }
+  document.getElementById('turn-counter').innerText = `Lượt: ${turnCount}/15`;
+}
+
+function openActionMenu(unit) {
+  actionState = 'MENU';
+  render();
+
+  // Check if enemies in attack range
+  const atkRange = getAttackRangeTiles(unit);
+  const enemiesInRange = units.some(u => u.team === 'enemy' && atkRange.some(t => t.x === u.x && t.y === u.y));
+  document.getElementById('btn-act-attack').style.display = enemiesInRange ? 'flex' : 'none';
+
+  // Check if allies in heal range (only Hạnh)
+  if (unit.special === 'HEAL') {
+    const alliesInRange = units.some(u => u.team === 'player' && u !== unit && Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) === 1);
+    document.getElementById('btn-act-heal').style.display = alliesInRange ? 'flex' : 'none';
+  } else {
+    document.getElementById('btn-act-heal').style.display = 'none';
+  }
+
+  // Position action menu
+  const px = unit.x * TILE_SIZE;
+  const py = unit.y * TILE_SIZE;
+  const menuX = Math.min(canvas.width - 130, Math.max(10, px + TILE_SIZE + 5));
+  const menuY = Math.min(canvas.height - 140, Math.max(10, py - 20));
+
+  actionMenu.style.left = `${menuX}px`;
+  actionMenu.style.top = `${menuY}px`;
+  actionMenu.style.display = 'flex';
+}
+
+function deselect() {
+  selectedUnit = null;
+  moveTiles = [];
+  attackTiles = [];
+  healTiles = [];
+  actionMenu.style.display = 'none';
+  forecastModal.style.display = 'none';
+  actionState = 'IDLE';
+  render();
+}
+
+function cancelTargeting() {
+  actionState = 'MENU';
+  render();
+  actionMenu.style.display = 'flex';
+}
+
+// Menu buttons
+document.getElementById('btn-act-wait').onclick = () => {
+  SFX.select();
+  selectedUnit.hasActed = true;
+  deselect();
+  checkPlayerTurnEnd();
+};
+
+document.getElementById('btn-act-cancel').onclick = () => {
+  SFX.select();
+  selectedUnit.x = selectedUnit.originalPos.x;
+  selectedUnit.y = selectedUnit.originalPos.y;
+  deselect();
+};
+
+document.getElementById('btn-act-attack').onclick = () => {
+  SFX.select();
+  actionMenu.style.display = 'none';
+  actionState = 'TARGET_ATTACK';
+  attackTiles = getAttackRangeTiles(selectedUnit);
+  render();
+};
+
+document.getElementById('btn-act-heal').onclick = () => {
+  SFX.select();
+  actionMenu.style.display = 'none';
+  actionState = 'TARGET_HEAL';
+  healTiles = [{x:selectedUnit.x, y:selectedUnit.y-1},{x:selectedUnit.x, y:selectedUnit.y+1},{x:selectedUnit.x-1, y:selectedUnit.y},{x:selectedUnit.x+1, y:selectedUnit.y}]
+    .filter(t => t.x>=0 && t.x<COLS && t.y>=0 && t.y<ROWS);
+  render();
+};
+
+// --- BATTLE FORECAST & COMBAT ENGINE ---
+function calcCombatStats(atkUnit, defUnit) {
+  const defTerrain = TERRAIN_INFO[TERRAIN_MAP[defUnit.y][defUnit.x]];
+  const atkTerrain = TERRAIN_INFO[TERRAIN_MAP[atkUnit.y][atkUnit.x]];
+
+  // Damage = Atk - Def - TerrainDef
+  const dmg = Math.max(1, (atkUnit.atk) - (defUnit.def + defTerrain.def));
+  
+  // Hit = Base 90 + (Spd * 2) - (DefSpd * 2 + TerrainAvo)
+  const hit = Math.min(100, Math.max(20, 85 + (atkUnit.spd * 2) - (defUnit.spd * 2 + defTerrain.avo)));
+  
+  // Crit = (Spd - DefSpd)
+  const crit = Math.max(0, Math.min(50, 5 + (atkUnit.spd - defUnit.spd) * 2));
+
+  // Double attack if Spd >= DefSpd + 4
+  const doubleAttack = atkUnit.spd >= defUnit.spd + 4;
+
+  return { dmg, hit, crit, doubleAttack };
+}
+
+function showForecastModal(atkUnit, defUnit) {
+  const atkStats = calcCombatStats(atkUnit, defUnit);
+  
+  // Check if defender can counter-attack
+  const dist = Math.abs(atkUnit.x - defUnit.x) + Math.abs(atkUnit.y - defUnit.y);
+  const canCounter = dist >= defUnit.minRange && dist <= defUnit.maxRange;
+  const defStats = canCounter ? calcCombatStats(defUnit, atkUnit) : { dmg: 0, hit: 0, crit: 0, doubleAttack: false };
+
+  document.getElementById('fc-atk-icon').innerText = atkUnit.icon;
+  document.getElementById('fc-atk-name').innerText = atkUnit.name;
+  document.getElementById('fc-atk-hp').innerText = `${atkUnit.hp}/${atkUnit.maxHp}`;
+  document.getElementById('fc-atk-dmg').innerText = atkStats.doubleAttack ? `${atkStats.dmg} x 2` : `${atkStats.dmg}`;
+  document.getElementById('fc-atk-hit').innerText = `${atkStats.hit}%`;
+  document.getElementById('fc-atk-crit').innerText = `${atkStats.crit}%`;
+
+  document.getElementById('fc-def-icon').innerText = defUnit.icon;
+  document.getElementById('fc-def-name').innerText = defUnit.name;
+  document.getElementById('fc-def-hp').innerText = `${defUnit.hp}/${defUnit.maxHp}`;
+  document.getElementById('fc-def-dmg').innerText = canCounter ? (defStats.doubleAttack ? `${defStats.dmg} x 2` : `${defStats.dmg}`) : "Không thể";
+  document.getElementById('fc-def-hit').innerText = canCounter ? `${defStats.hit}%` : "--";
+  document.getElementById('fc-def-crit').innerText = canCounter ? `${defStats.crit}%` : "--";
+
+  forecastModal.style.display = 'block';
+}
+
+document.getElementById('btn-cancel-fight').onclick = () => {
+  SFX.select();
+  forecastModal.style.display = 'none';
+  actionState = 'MENU';
+  actionMenu.style.display = 'flex';
+};
+
+document.getElementById('btn-confirm-fight').onclick = () => {
+  forecastModal.style.display = 'none';
+  executeCombat(selectedUnit, targetEnemy);
+};
+
+function executeCombat(atkUnit, defUnit) {
+  const atkStats = calcCombatStats(atkUnit, defUnit);
+  const dist = Math.abs(atkUnit.x - defUnit.x) + Math.abs(atkUnit.y - defUnit.y);
+  const canCounter = dist >= defUnit.minRange && dist <= defUnit.maxRange;
+  const defStats = canCounter ? calcCombatStats(defUnit, atkUnit) : null;
+
+  // Round 1: Attacker strikes
+  applyDamage(atkUnit, defUnit, atkStats);
+
+  // Round 2: Counter if defender still alive
+  if (defUnit.hp > 0 && canCounter) {
+    setTimeout(() => {
+      applyDamage(defUnit, atkUnit, defStats);
+
+      // Round 3: Double attack if applicable
+      if (atkUnit.hp > 0 && defUnit.hp > 0 && atkStats.doubleAttack) {
+        setTimeout(() => applyDamage(atkUnit, defUnit, atkStats), 350);
+      }
+    }, 350);
+  } else if (defUnit.hp > 0 && atkStats.doubleAttack) {
+    setTimeout(() => applyDamage(atkUnit, defUnit, atkStats), 350);
+  }
+
+  setTimeout(() => {
+    // Check death
+    units = units.filter(u => u.hp > 0);
+    atkUnit.hasActed = true;
+    deselect();
+    checkGameOver();
+    if (currentPhase === 'player') checkPlayerTurnEnd();
+  }, 800);
+}
+
+function applyDamage(attacker, defender, stats) {
+  const rollHit = Math.random() * 100;
+  if (rollHit <= stats.hit) {
+    const rollCrit = Math.random() * 100;
+    const isCrit = rollCrit <= stats.crit;
+    const finalDmg = isCrit ? stats.dmg * 3 : stats.dmg;
+    defender.hp = Math.max(0, defender.hp - finalDmg);
+
+    if (isCrit) {
+      SFX.crit();
+      showFloatingText(defender.x, defender.y, `CHÍ MẠNG! -${finalDmg}`, "#ff0055");
+    } else {
+      SFX.hit();
+      showFloatingText(defender.x, defender.y, `-${finalDmg}`, "#ffeb3b");
+    }
+  } else {
+    showFloatingText(defender.x, defender.y, "HỤT!", "#8b949e");
+  }
+  render();
+}
+
+function executeHeal(caster, target) {
+  SFX.heal();
+  const healAmt = 12;
+  target.hp = Math.min(target.maxHp, target.hp + healAmt);
+  showFloatingText(target.x, target.y, `+${healAmt} HP`, "#00ffcc");
+  caster.hasActed = true;
+  deselect();
+  render();
+  setTimeout(() => checkPlayerTurnEnd(), 300);
+}
+
+function showFloatingText(gx, gy, text, color) {
+  const px = gx * TILE_SIZE + TILE_SIZE / 2;
+  const py = gy * TILE_SIZE + TILE_SIZE / 2;
+  
+  let offset = 0;
+  const anim = setInterval(() => {
+    render();
+    ctx.font = "bold 13px sans-serif";
+    ctx.fillStyle = color;
+    ctx.textAlign = "center";
+    ctx.shadowColor = "black";
+    ctx.shadowBlur = 4;
+    ctx.fillText(text, px, py - offset);
+    ctx.shadowBlur = 0;
+    offset += 2;
+    if (offset > 30) {
+      clearInterval(anim);
+      render();
+    }
+  }, 20);
+}
+
+// --- TURN & AI MANAGEMENT ---
+function checkPlayerTurnEnd() {
+  const allActed = units.filter(u => u.team === 'player').every(u => u.hasActed);
+  if (allActed) {
+    startEnemyPhase();
+  }
+}
+
+document.getElementById('btn-end-turn').onclick = () => {
+  initAudio();
+  if (currentPhase === 'player') {
+    startEnemyPhase();
+  }
+};
+
+function showPhaseBanner(text, isPlayer) {
+  phaseBanner.innerText = text;
+  phaseBanner.style.background = isPlayer ? "rgba(31, 111, 235, 0.9)" : "rgba(218, 54, 51, 0.9)";
+  phaseBanner.style.color = "white";
+  phaseBanner.classList.add('banner-show');
+  if (isPlayer) SFX.phasePlayer(); else SFX.phaseEnemy();
+  setTimeout(() => {
+    phaseBanner.classList.remove('banner-show');
+  }, 900);
+}
+
+function startEnemyPhase() {
+  currentPhase = 'enemy';
+  phaseLabel.innerText = "LƯỢT ĐỊCH";
+  phaseLabel.className = "phase-badge phase-enemy";
+  showPhaseBanner("ENEMY PHASE", false);
+
+  deselect();
+
+  // Heal on forts
+  units.forEach(u => {
+    if (TERRAIN_MAP[u.y][u.x] === 3) {
+      u.hp = Math.min(u.maxHp, Math.floor(u.hp + u.maxHp * 0.2));
+    }
+  });
+
+  setTimeout(() => {
+    runEnemyAISequence();
+  }, 1000);
+}
+
+function runEnemyAISequence() {
+  const enemyUnits = units.filter(u => u.team === 'enemy');
+  let idx = 0;
+
+  function nextEnemy() {
+    if (idx >= enemyUnits.length) {
+      startPlayerPhase();
+      return;
+    }
+    const enemy = enemyUnits[idx++];
+    if (enemy.hp <= 0) {
+      nextEnemy();
+      return;
+    }
+
+    // AI Logic: Find nearest player
+    const players = units.filter(u => u.team === 'player');
+    if (players.length === 0) {
+      checkGameOver();
+      return;
+    }
+
+    let nearest = players[0];
+    let minDist = 999;
+    players.forEach(p => {
+      const d = Math.abs(p.x - enemy.x) + Math.abs(p.y - enemy.y);
+      if (d < minDist) { minDist = d; nearest = p; }
+    });
+
+    // Check if can attack immediately
+    if (minDist >= enemy.minRange && minDist <= enemy.maxRange) {
+      executeCombat(enemy, nearest);
+      setTimeout(nextEnemy, 1000);
+    } else {
+      // Move closer
+      const reach = getReachableTiles(enemy);
+      if (reach.length > 0) {
+        reach.sort((a, b) => {
+          const da = Math.abs(a.x - nearest.x) + Math.abs(a.y - nearest.y);
+          const db = Math.abs(b.x - nearest.x) + Math.abs(b.y - nearest.y);
+          return da - db;
+        });
+        enemy.x = reach[0].x;
+        enemy.y = reach[0].y;
+        render();
+
+        // Check attack after move
+        const postDist = Math.abs(nearest.x - enemy.x) + Math.abs(nearest.y - enemy.y);
+        if (postDist >= enemy.minRange && postDist <= enemy.maxRange) {
+          setTimeout(() => {
+            executeCombat(enemy, nearest);
+            setTimeout(nextEnemy, 1000);
+          }, 300);
+        } else {
+          setTimeout(nextEnemy, 400);
+        }
+      } else {
+        setTimeout(nextEnemy, 300);
+      }
+    }
+  }
+  nextEnemy();
+}
+
+function startPlayerPhase() {
+  turnCount++;
+  currentPhase = 'player';
+  phaseLabel.innerText = "LƯỢT PHE TA";
+  phaseLabel.className = "phase-badge phase-player";
+  showPhaseBanner("PLAYER PHASE", true);
+
+  units.forEach(u => {
+    u.hasActed = false;
+    // Heal on fort
+    if (u.team === 'player' && TERRAIN_MAP[u.y][u.x] === 3) {
+      u.hp = Math.min(u.maxHp, Math.floor(u.hp + u.maxHp * 0.2));
+    }
+  });
+
+  render();
+  checkGameOver();
+}
+
+function checkGameOver() {
+  const biAlive = units.some(u => u.id === 'bi');
+  const bossAlive = units.some(u => u.id === 'boss');
+
+  if (!biAlive) {
+    document.getElementById('end-title').innerText = "THẤT BẠI!";
+    document.getElementById('end-title').style.color = "#da3633";
+    document.getElementById('end-desc').innerText = "Trục trưởng Bi đã gục ngã trước bẫy ma trận. Hãy thử lại để bẻ gãy khối lập phương!";
+    document.getElementById('end-modal').style.display = 'flex';
+  } else if (!bossAlive) {
+    document.getElementById('end-title').innerText = "ĐẠI THẮNG 358!";
+    document.getElementById('end-title').style.color = "#238636";
+    document.getElementById('end-desc').innerText = "Khối Lập Phương Đen (Boss Saturn) đã bị nghiền nát thành tro bụi! Bản thể Rồng Cổ, Mèo Cổ và Cú Mèo đã giải phóng toàn bộ tọa độ.";
+    document.getElementById('end-modal').style.display = 'flex';
+  }
+}
+
+function restartGame() {
+  document.getElementById('end-modal').style.display = 'none';
+  turnCount = 1;
+  currentPhase = 'player';
+  phaseLabel.innerText = "LƯỢT PHE TA";
+  phaseLabel.className = "phase-badge phase-player";
+  initUnits();
+  deselect();
+  render();
+}
+
+// Sound toggle
+document.getElementById('btn-sound').onclick = () => {
+  soundEnabled = !soundEnabled;
+  document.getElementById('btn-sound').innerText = soundEnabled ? '🔊' : '🔇';
+};
+
+// Initial startup
+initUnits();
+setTimeout(resizeCanvas, 100);
+</script>
+</body>
+</html>

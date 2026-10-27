@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>AB 125 Đổ Đèo Tây Bắc 3D - Căn Cứ 358</title>
-<!-- Include Three.js via CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body {
@@ -15,12 +13,25 @@
     overflow: hidden;
     touch-action: none;
     user-select: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
   }
-  #canvas-container {
-    position: absolute;
-    top: 0; left: 0; width: 100vw; height: 100vh;
-    z-index: 1;
+  #game-wrapper {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    overflow: hidden;
   }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
   /* Heads-Up Display (HUD) */
   #hud-overlay {
     position: absolute;
@@ -45,9 +56,7 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.6);
     backdrop-filter: blur(4px);
   }
-  .speedometer {
-    text-align: right;
-  }
+  .speedometer { text-align: right; }
   .speed-num {
     font-size: 28px;
     font-weight: 900;
@@ -68,7 +77,7 @@
     height: 100%;
     width: 20%;
     background: #238636;
-    transition: width 0.2s, background 0.3s;
+    transition: width 0.15s, background 0.3s;
   }
   .status-tag {
     font-size: 10px;
@@ -81,7 +90,7 @@
     margin-top: 4px;
   }
 
-  /* Virtual Touch Controls for Mobile */
+  /* Virtual Touch Controls */
   #touch-controls {
     position: absolute;
     bottom: 20px;
@@ -89,27 +98,24 @@
     width: 100%;
     display: flex;
     justify-content: space-between;
-    padding: 0 24px;
+    padding: 0 20px;
     z-index: 20;
     pointer-events: auto;
   }
-  .ctrl-group {
-    display: flex;
-    gap: 14px;
-  }
+  .ctrl-group { display: flex; gap: 14px; }
   .touch-btn {
-    width: 68px;
-    height: 68px;
+    width: 66px;
+    height: 66px;
     border-radius: 50%;
-    background: rgba(22, 27, 34, 0.75);
+    background: rgba(22, 27, 34, 0.8);
     border: 2px solid #58a6ff;
     color: #e6edf3;
-    font-size: 24px;
+    font-size: 26px;
     font-weight: bold;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5), inset 0 0 10px rgba(88, 166, 255, 0.2);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6), inset 0 0 10px rgba(88, 166, 255, 0.3);
     backdrop-filter: blur(6px);
     user-select: none;
     touch-action: none;
@@ -122,14 +128,14 @@
   }
   .btn-brake {
     border-color: #da3633 !important;
-    background: rgba(218, 54, 51, 0.3) !important;
+    background: rgba(218, 54, 51, 0.35) !important;
   }
   .btn-brake:active, .btn-brake.pressed {
     background: #da3633 !important;
     box-shadow: 0 0 25px #da3633 !important;
   }
 
-  /* Audio player button */
+  /* Audio button */
   #btn-music {
     pointer-events: auto;
     background: #21262d;
@@ -142,17 +148,17 @@
     cursor: pointer;
   }
 
-  /* Message Overlays */
+  /* Modals */
   #start-modal, #gameover-modal {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(5, 8, 17, 0.9);
+    background: rgba(5, 8, 17, 0.92);
     z-index: 100;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 24px;
+    padding: 20px;
     text-align: center;
   }
   .modal-box {
@@ -173,141 +179,129 @@
     font-weight: bold;
     cursor: pointer;
     box-shadow: 0 0 15px rgba(35, 134, 54, 0.6);
-    margin-top: 16px;
+    margin-top: 14px;
   }
 </style>
 </head>
 <body>
 
-<div id="canvas-container"></div>
+<div id="game-wrapper">
+  <canvas id="roadCanvas"></canvas>
 
-<!-- HUD -->
-<div id="hud-overlay">
-  <div class="hud-top">
-    <div class="dashboard-card">
-      <div style="font-weight:800; font-size:12px; color:#58a6ff;">CĂN CỨ 358 • TÂY BẮC</div>
-      <div style="font-size:11px; color:#8b949e; margin-top:2px;">Dốc Đèo: <strong style="color:#d29922;">-10%</strong></div>
-      <div style="font-size:11px; color:#7ee787; margin-top:2px;">Quãng đường: <strong id="hud-dist">0.0 km</strong></div>
-      <div style="font-size:11px; color:#e3b341; margin-top:2px;">Trà & Xoài: <strong id="hud-score">0</strong></div>
+  <!-- HUD -->
+  <div id="hud-overlay">
+    <div class="hud-top">
+      <div class="dashboard-card">
+        <div style="font-weight:800; font-size:12px; color:#58a6ff;">CĂN CỨ 358 • TÂY BẮC 3D</div>
+        <div style="font-size:11px; color:#8b949e; margin-top:2px;">Độ Dốc: <strong style="color:#d29922;">-10%</strong></div>
+        <div style="font-size:11px; color:#7ee787; margin-top:2px;">Quãng đường: <strong id="hud-dist">0.0 km</strong></div>
+        <div style="font-size:11px; color:#e3b341; margin-top:2px;">Trà & Xoài: <strong id="hud-score">0</strong></div>
+      </div>
+
+      <div class="dashboard-card speedometer">
+        <div class="speed-num" id="hud-speed">35</div>
+        <div class="speed-unit">KM / GIỜ</div>
+        <div style="font-size:10px; color:#8b949e; margin-top:4px;">NHIỆT PHANH</div>
+        <div class="brake-temp-bar"><div class="brake-temp-fill" id="hud-temp-fill"></div></div>
+        <div class="status-tag" id="hud-status">PHANH TỐT</div>
+      </div>
     </div>
 
-    <div class="dashboard-card speedometer">
-      <div class="speed-num" id="hud-speed">35</div>
-      <div class="speed-unit">KM / GIỜ</div>
-      <div style="font-size:10px; color:#8b949e; margin-top:6px;">NHIỆT PHANH</div>
-      <div class="brake-temp-bar"><div class="brake-temp-fill" id="hud-temp-fill"></div></div>
-      <div class="status-tag" id="hud-status">PHANH TỐT</div>
+    <div style="display:flex; justify-content:center;">
+      <button id="btn-music">🎵 ÂM THANH 432HZ: BẬT</button>
     </div>
   </div>
 
-  <div style="display:flex; justify-content:center;">
-    <button id="btn-music">🎵 NHẠC 432HZ: BẬT</button>
-  </div>
-</div>
-
-<!-- Touch Controls for Mobile -->
-<div id="touch-controls">
-  <div class="ctrl-group">
-    <div class="touch-btn" id="btn-left">◀</div>
-    <div class="touch-btn" id="btn-right">▶</div>
-  </div>
-  <div class="ctrl-group">
-    <div class="touch-btn btn-brake" id="btn-brake">🛑</div>
-    <div class="touch-btn" id="btn-gas">⚡</div>
-  </div>
-</div>
-
-<!-- Start Modal -->
-<div id="start-modal">
-  <div class="modal-box">
-    <h2 style="color:#58a6ff; margin-bottom:8px;">AB 125 ĐỔ ĐÈO 3D</h2>
-    <p style="font-size:13px; color:#8b949e; line-height:1.6;">
-      Trục trưởng Bi cầm lái con Air Blade chở Bà cô nhỏ Hạnh đổ đèo dốc gắt 10% tại Tây Bắc.
-    </p>
-    <div style="text-align:left; background:#0d1117; padding:10px; border-radius:6px; margin:12px 0; font-size:12px; line-height:1.6;">
-      🔹 <strong>◀ / ▶ (A/D):</strong> Lạng lách ôm cua né xe tải lấn làn, đá tai mèo.<br>
-      🔹 <strong>🛑 (Phanh / Space / S):</strong> Nhấp nhả phanh hãm tốc độ 25-35 km/h.<br>
-      ⚠️ <em>CẢNH BÁO:</em> Bóp giữ phanh liên tục sẽ làm <strong>CHÁY PHANH</strong> (mất lái)! Hãy nhấp nhả theo nhịp!<br>
-      🔹 Nhặt 🍵 Chén trà & 🥭 Quả xoài để hồi phục nhiệt phanh và tích điểm.
+  <!-- Touch Controls -->
+  <div id="touch-controls">
+    <div class="ctrl-group">
+      <div class="touch-btn" id="btn-left">◀</div>
+      <div class="touch-btn" id="btn-right">▶</div>
     </div>
-    <button class="btn-start" onclick="startGame()">VẶN GA XUẤT PHÁT!</button>
-  </div>
-</div>
-
-<!-- Game Over Modal -->
-<div id="gameover-modal" style="display:none;">
-  <div class="modal-box">
-    <h2 id="go-title" style="color:#da3633; margin-bottom:8px;">MẤT PHANH LAO VỰC!</h2>
-    <p id="go-desc" style="font-size:13px; color:#8b949e; line-height:1.6;"></p>
-    <div style="font-size:16px; font-weight:bold; color:#7ee787; margin:14px 0;">
-      Quãng đường đi được: <span id="go-dist">0 km</span>
+    <div class="ctrl-group">
+      <div class="touch-btn btn-brake" id="btn-brake">🛑</div>
+      <div class="touch-btn" id="btn-gas">⚡</div>
     </div>
-    <button class="btn-start" onclick="restartGame()">CHẠY LẠI TỪ ĐẦU</button>
+  </div>
+
+  <!-- Start Modal -->
+  <div id="start-modal">
+    <div class="modal-box">
+      <h2 style="color:#58a6ff; margin-bottom:8px;">AB 125 ĐỔ ĐÈO TÂY BẮC</h2>
+      <p style="font-size:13px; color:#8b949e; line-height:1.6;">
+        Trục trưởng Bi cầm lái xe máy Air Blade chở Bà cô nhỏ Hạnh đổ đèo dốc gắt 10% giữa núi rừng Tây Bắc.
+      </p>
+      <div style="text-align:left; background:#0d1117; padding:10px; border-radius:6px; margin:12px 0; font-size:12px; line-height:1.6;">
+        🔹 <strong>◀ / ▶ (A/D):</strong> Lạng lách ôm cua, né xe tải lấn làn & đá tai mèo.<br>
+        🔹 <strong>🛑 (Space / Phanh):</strong> Nhấp nhả hãm tốc độ 25 - 35 km/h.<br>
+        ⚠️ <em>CẢNH BÁO:</em> Dốc 10% kéo xe lao cực nhanh! Rà phanh liên tục sẽ làm <strong>CHÁY PHANH</strong> (lao vực)! Hãy nhấp nhả theo nhịp!<br>
+        🔹 Nhặt 🍵 Chén trà (hồi mát phanh) & 🥭 Quả xoài (tăng điểm).
+      </div>
+      <button class="btn-start" onclick="startGame()">VẶN GA XUẤT PHÁT!</button>
+    </div>
+  </div>
+
+  <!-- Game Over Modal -->
+  <div id="gameover-modal" style="display:none;">
+    <div class="modal-box">
+      <h2 id="go-title" style="color:#da3633; margin-bottom:8px;">MẤT PHANH LAO VỰC!</h2>
+      <p id="go-desc" style="font-size:13px; color:#8b949e; line-height:1.6;"></p>
+      <div style="font-size:16px; font-weight:bold; color:#7ee787; margin:14px 0;">
+        Quãng đường đi được: <span id="go-dist">0 km</span>
+      </div>
+      <button class="btn-start" onclick="restartGame()">CHẠY LẠI TỪ ĐẦU</button>
+    </div>
   </div>
 </div>
 
 <script>
-// --- AUDIO SYNTHESIS & BGM ENGINE ---
+// --- AUDIO & SFX SYNTHESIZER (WEB AUDIO API - 0 DEPENDENCIES) ---
 let audioCtx = null;
-let bgmOsc = null;
-let bgmGain = null;
 let soundOn = true;
 
 function initAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    startBGM();
+    startAmbientChime();
   }
 }
 
-function startBGM() {
+function startAmbientChime() {
   if (!soundOn || !audioCtx) return;
-  // Synthesize smooth ambient 432Hz drone + gentle melody
-  try {
-    const drone = audioCtx.createOscillator();
-    const droneGain = audioCtx.createGain();
-    drone.type = 'sine';
-    drone.frequency.setValueAtTime(432 / 2, audioCtx.currentTime); // 216Hz deep calm drone
-    droneGain.gain.setValueAtTime(0.04, audioCtx.currentTime);
-    drone.connect(droneGain);
-    droneGain.connect(audioCtx.destination);
-    drone.start();
-
-    // Pentatonic ambient chime loop
-    const notes = [432, 486, 540, 648, 720];
-    let noteIdx = 0;
-    setInterval(() => {
-      if (!soundOn || !audioCtx) return;
+  const notes = [432, 486, 540, 648, 720]; // Pentatonic 432Hz Scale
+  let idx = 0;
+  setInterval(() => {
+    if (!soundOn || !audioCtx) return;
+    try {
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(notes[noteIdx % notes.length], audioCtx.currentTime);
-      g.gain.setValueAtTime(0.03, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(notes[idx % notes.length], audioCtx.currentTime);
+      g.gain.setValueAtTime(0.04, audioCtx.currentTime);
       g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
       osc.connect(g);
       g.connect(audioCtx.destination);
       osc.start();
       osc.stop(audioCtx.currentTime + 1.2);
-      noteIdx = (noteIdx + Math.floor(Math.random() * 3) + 1);
-    }, 1400);
-  } catch(e) {}
+      idx = (idx + Math.floor(Math.random() * 3) + 1);
+    } catch(e) {}
+  }, 1300);
 }
 
 function playSfx(type) {
   if (!soundOn || !audioCtx) return;
   try {
     if (type === 'brake') {
-      // Squeal / friction
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(800 + Math.random()*200, audioCtx.currentTime);
-      g.gain.setValueAtTime(0.05, audioCtx.currentTime);
-      g.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+      osc.frequency.setValueAtTime(750 + Math.random()*200, audioCtx.currentTime);
+      g.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      g.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
       osc.connect(g);
       g.connect(audioCtx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.1);
+      osc.stop(audioCtx.currentTime + 0.08);
     } else if (type === 'pickup') {
       [540, 720, 864].forEach((f, i) => {
         setTimeout(() => {
@@ -315,7 +309,7 @@ function playSfx(type) {
           const g = audioCtx.createGain();
           osc.type = 'sine';
           osc.frequency.setValueAtTime(f, audioCtx.currentTime);
-          g.gain.setValueAtTime(0.08, audioCtx.currentTime);
+          g.gain.setValueAtTime(0.1, audioCtx.currentTime);
           g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
           osc.connect(g);
           g.connect(audioCtx.destination);
@@ -327,491 +321,486 @@ function playSfx(type) {
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
       osc.type = 'square';
-      osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.5);
+      osc.frequency.setValueAtTime(110, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(25, audioCtx.currentTime + 0.6);
       g.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      g.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+      g.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
       osc.connect(g);
       g.connect(audioCtx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.5);
+      osc.stop(audioCtx.currentTime + 0.6);
     }
   } catch(e) {}
 }
 
 document.getElementById('btn-music').onclick = () => {
   soundOn = !soundOn;
-  document.getElementById('btn-music').innerText = soundOn ? "🎵 NHẠC 432HZ: BẬT" : "🔇 ÂM THANH: TẮT";
+  document.getElementById('btn-music').innerText = soundOn ? "🎵 ÂM THANH 432HZ: BẬT" : "🔇 ÂM THANH: TẮT";
 };
 
-// --- THREE.JS 3D SCENE & ENGINE SETUP ---
-let scene, camera, renderer;
-let scooterGroup, wheels = [];
-let roadSegments = [];
-let obstacles = [];
-let collectibles = [];
-let mountainMeshes = [];
+// --- PURE CANVAS 3D PSEUDO-ENGINE (OUTRUN / SUPER HANG-ON 3D) ---
+const canvas = document.getElementById('roadCanvas');
+const ctx = canvas.getContext('2d');
 
-// Game State Variables
+let width = window.innerWidth;
+let height = window.innerHeight;
+
+function resize() {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Road Projection Specs
+const roadWidth = 2000;
+const segmentLength = 200;
+const rumbleLength = 3;
+const cameraHeight = 1000;
+const cameraDepth = 0.84;
+const drawDistance = 280;
+
+let segments = [];
+let totalSegments = 0;
+let trackLength = 0;
+
+// Game State
 let isRunning = false;
+let position = 0;
+let playerX = 0; // -1 to 1
+let playerZ = cameraHeight * cameraDepth;
 let speed = 35; // km/h
-let baseSpeed = 35;
-let lateralPos = 0; // -1 to 1 (lane position)
-let lateralSpeed = 0;
-let brakeTemp = 30; // degrees C
-let distanceTraveled = 0; // meters
+let brakeTemp = 30; // deg C
+let distanceMeters = 0;
 let itemsCollected = 0;
-let curveStrength = 0; // road curvature
-let targetCurve = 0;
 
-// Input State
 const keys = { left: false, right: false, brake: false, gas: false };
 
-function initThree() {
-  const container = document.getElementById('canvas-container');
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x08101f);
-  scene.fog = new THREE.FogExp2(0x08101f, 0.012);
+// Road Geometry Builder
+function buildRoad() {
+  segments = [];
+  
+  function addSegment(curve, y) {
+    const n = segments.length;
+    segments.push({
+      index: n,
+      p1: { world: { x: 0, y: y, z: n * segmentLength }, camera: {}, screen: {} },
+      p2: { world: { x: 0, y: y, z: (n + 1) * segmentLength }, camera: {}, screen: {} },
+      curve: curve,
+      color: Math.floor(n / rumbleLength) % 2 ?
+        { road: '#1e2430', grass: '#09131f', rumble: '#58a6ff', lane: '#f0b429' } :
+        { road: '#161b22', grass: '#050c17', rumble: '#00f0ff', lane: 'transparent' },
+      sprites: []
+    });
+  }
 
-  camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 3.2, 5.5);
-  camera.lookAt(0, 1.2, -8);
+  function addRoad(enter, hold, leave, curve, y) {
+    const startY = segments.length > 0 ? segments[segments.length - 1].p2.world.y : 0;
+    const endY = startY + (y * segmentLength);
+    const total = enter + hold + leave;
+    for (let n = 0; n < enter; n++) addSegment(curve * (n / enter), startY + (endY - startY) * (n / total));
+    for (let n = 0; n < hold; n++) addSegment(curve, startY + (endY - startY) * ((enter + n) / total));
+    for (let n = 0; n < leave; n++) addSegment(curve * (1 - (n / leave)), startY + (endY - startY) * ((enter + hold + n) / total));
+  }
 
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
-  container.appendChild(renderer.domElement);
+  // Create iconic winding mountain pass (Tây Bắc)
+  addRoad(50, 50, 50, 0, -2);        // Straight downhill start (-10% grade)
+  addRoad(40, 60, 40, 2.5, -4);      // Gentle right curve
+  addRoad(40, 80, 40, -3.2, -5);     // Sharp left curve
+  addRoad(50, 40, 50, 0, -3);        // Dip
+  addRoad(40, 80, 40, 3.8, -6);      // Cua tay áo phải (Switchback)
+  addRoad(40, 70, 40, -3.5, -4);     // Cua tay áo trái
+  addRoad(50, 50, 50, 0, -2);        // End of track loop
 
-  // Lighting
-  const ambientLight = new THREE.AmbientLight(0x405070, 1.2);
-  scene.add(ambientLight);
+  totalSegments = segments.length;
+  trackLength = totalSegments * segmentLength;
 
-  const sunLight = new THREE.DirectionalLight(0xffeedd, 1.5);
-  sunLight.position.set(20, 40, -10);
-  sunLight.castShadow = true;
-  scene.add(sunLight);
-
-  // Cyan Torus Glow Light
-  const cyanLight = new THREE.PointLight(0x00f0ff, 1.2, 30);
-  cyanLight.position.set(0, 4, 0);
-  scene.add(cyanLight);
-
-  // Build World
-  createMountains();
-  createRoad();
-  createScooter();
-}
-
-// --- PROCEDURAL 3D ASSETS ---
-function createMountains() {
-  const mtnGeo = new THREE.ConeGeometry(35, 60, 5);
-  const mtnMat1 = new THREE.MeshLambertMaterial({ color: 0x182438, flatShading: true });
-  const mtnMat2 = new THREE.MeshLambertMaterial({ color: 0x0f1929, flatShading: true });
-
-  for (let i = 0; i < 28; i++) {
-    const side = (i % 2 === 0) ? 1 : -1;
-    const mtn = new THREE.Mesh(mtnGeo, (i % 3 === 0) ? mtnMat2 : mtnMat1);
-    const z = - (i * 25) - 30;
-    const x = side * (45 + Math.random() * 30);
-    mtn.position.set(x, 15 + Math.random() * 10, z);
-    mtn.scale.set(1 + Math.random()*0.5, 0.8 + Math.random()*0.6, 1 + Math.random()*0.5);
-    scene.add(mtn);
-    mountainMeshes.push(mtn);
+  // Populate Obstacles & Collectibles
+  for (let n = 20; n < totalSegments - 20; n += 18) {
+    const rand = Math.random();
+    if (rand < 0.45) {
+      // Xe tải lấn làn
+      segments[n].sprites.push({ type: 'truck', offset: (Math.random() > 0.5 ? 0.4 : -0.4), width: 1.4 });
+    } else if (rand < 0.75) {
+      // Đá tai mèo sạt lở
+      segments[n].sprites.push({ type: 'rock', offset: (Math.random() * 1.4 - 0.7), width: 0.9 });
+    } else if (rand < 0.9) {
+      // Chén trà 432Hz
+      segments[n].sprites.push({ type: 'tea', offset: (Math.random() * 1.2 - 0.6), width: 0.8 });
+    } else {
+      // Quả xoài
+      segments[n].sprites.push({ type: 'mango', offset: (Math.random() * 1.2 - 0.6), width: 0.8 });
+    }
   }
 }
 
-const ROAD_WIDTH = 12;
-const SEGMENT_LENGTH = 15;
-const NUM_SEGMENTS = 25;
+// 3D Projection Math
+function project(p, cameraX, cameraY, cameraZ, cameraDepth, width, height, roadWidth) {
+  p.camera.x = (p.world.x || 0) - cameraX;
+  p.camera.y = (p.world.y || 0) - cameraY;
+  p.camera.z = (p.world.z || 0) - cameraZ;
+  p.screen.scale = cameraDepth / p.camera.z;
+  p.screen.x = Math.round((width / 2) + (p.screen.scale * p.camera.x * width / 2));
+  p.screen.y = Math.round((height / 2) - (p.screen.scale * p.camera.y * height / 2));
+  p.screen.w = Math.round((p.screen.scale * roadWidth * width / 2));
+}
 
-function createRoad() {
-  const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, SEGMENT_LENGTH);
-  const roadMat = new THREE.MeshLambertMaterial({ color: 0x1e2430 });
-  const guardGeo = new THREE.BoxGeometry(0.4, 0.8, SEGMENT_LENGTH);
-  const guardMat = new THREE.MeshLambertMaterial({ color: 0xc0c8d4 });
+function findSegment(z) {
+  return segments[Math.floor(z / segmentLength) % totalSegments];
+}
 
-  for (let i = 0; i < NUM_SEGMENTS; i++) {
-    const segment = new THREE.Group();
+// Draw Polygon for Road Strips
+function drawPolygon(x1, y1, x2, y2, x3, y3, x4, y4, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.lineTo(x3, y3);
+  ctx.lineTo(x4, y4);
+  ctx.closePath();
+  ctx.fill();
+}
 
-    // Asphalt surface (tilt down for 10% slope: slope = 0.1 rad)
-    const asphalt = new THREE.Mesh(roadGeo, roadMat);
-    asphalt.rotation.x = -Math.PI / 2;
-    segment.add(asphalt);
+// --- RENDER 3D SPRITES (VEHICLES, CHARACTERS, ITEMS) ---
+function drawSprite(sprite, p, scale) {
+  const w = p.screen.w * sprite.width;
+  const h = w * 0.9;
+  const x = p.screen.x + (scale * sprite.offset * roadWidth * width / 4) - w / 2;
+  const y = p.screen.y - h;
 
-    // Center dash line
-    if (i % 2 === 0) {
-      const lineGeo = new THREE.PlaneGeometry(0.3, SEGMENT_LENGTH * 0.6);
-      const lineMat = new THREE.MeshBasicMaterial({ color: 0xf0b429 });
-      const line = new THREE.Mesh(lineGeo, lineMat);
-      line.rotation.x = -Math.PI / 2;
-      line.position.y = 0.02;
-      segment.add(line);
+  if (sprite.type === 'truck') {
+    // 3D Truck (Xe Tải Ma Trận)
+    ctx.fillStyle = "#8957e5";
+    ctx.fillRect(x, y, w, h * 0.7);
+    ctx.fillStyle = "#161b22";
+    ctx.fillRect(x, y + h * 0.7, w, h * 0.3);
+    // Red tail-lights
+    ctx.fillStyle = "#ff0055";
+    ctx.shadowColor = "red";
+    ctx.shadowBlur = 8;
+    ctx.fillRect(x + w * 0.1, y + h * 0.55, w * 0.2, h * 0.15);
+    ctx.fillRect(x + w * 0.7, y + h * 0.55, w * 0.2, h * 0.15);
+    ctx.shadowBlur = 0;
+  } else if (sprite.type === 'rock') {
+    // 3D Rock (Đá tai mèo)
+    ctx.fillStyle = "#6e7681";
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y);
+    ctx.lineTo(x + w, y + h * 0.8);
+    ctx.lineTo(x + w * 0.8, y + h);
+    ctx.lineTo(x + w * 0.2, y + h);
+    ctx.lineTo(x, y + h * 0.7);
+    ctx.closePath();
+    ctx.fill();
+  } else if (sprite.type === 'tea') {
+    // 🍵 Chén trà Cyan 432Hz
+    ctx.font = `${Math.max(14, Math.floor(h * 0.75))}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText("🍵", x + w/2, y + h * 0.8);
+  } else if (sprite.type === 'mango') {
+    // 🥭 Quả xoài
+    ctx.font = `${Math.max(14, Math.floor(h * 0.75))}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText("🥭", x + w/2, y + h * 0.8);
+  }
+}
+
+// Draw the Player's Air Blade 125 with Bi & Hạnh
+function drawPlayer(lean) {
+  const pW = Math.min(width * 0.42, 220);
+  const pH = pW * 1.05;
+  const pX = (width / 2) - pW / 2 + (playerX * 30);
+  const pY = height - pH - 15;
+
+  ctx.save();
+  ctx.translate(pX + pW / 2, pY + pH);
+  ctx.rotate(lean * 0.12); // Nghiêng xe khi ôm cua
+  ctx.translate(-(pX + pW / 2), -(pY + pH));
+
+  // 1. Scooter Rear Tire & Exhaust (Ống pô & Bánh sau)
+  ctx.fillStyle = "#161b22";
+  ctx.fillRect(pX + pW * 0.38, pY + pH * 0.75, pW * 0.24, pH * 0.25);
+  ctx.fillStyle = "#8b949e"; // Bô xe kim loại
+  ctx.fillRect(pX + pW * 0.65, pY + pH * 0.78, pW * 0.16, pH * 0.1);
+
+  // 2. Air Blade Body (Đuôi xe AB 125 xám đen)
+  ctx.fillStyle = "#3d4451";
+  ctx.beginPath();
+  ctx.moveTo(pX + pW * 0.2, pY + pH * 0.75);
+  ctx.lineTo(pX + pW * 0.8, pY + pH * 0.75);
+  ctx.lineTo(pX + pW * 0.7, pY + pH * 0.5);
+  ctx.lineTo(pX + pW * 0.3, pY + pH * 0.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Đèn hậu LED chữ V (V-shaped LED Tail Light)
+  ctx.strokeStyle = "#da3633";
+  ctx.lineWidth = 4;
+  ctx.shadowColor = "#da3633";
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.moveTo(pX + pW * 0.32, pY + pH * 0.62);
+  ctx.lineTo(pX + pW * 0.5, pY + pH * 0.7);
+  ctx.lineTo(pX + pW * 0.68, pY + pH * 0.62);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // 3. Hạnh (Ngồi sau - Áo tím + Mũ bảo hiểm tai mèo phát sáng)
+  ctx.fillStyle = "#8957e5"; // Áo tím Hạnh
+  ctx.beginPath();
+  ctx.arc(pX + pW * 0.5, pY + pH * 0.44, pW * 0.19, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Mũ bảo hiểm trắng
+  ctx.fillStyle = "#f0f6fc";
+  ctx.beginPath();
+  ctx.arc(pX + pW * 0.5, pY + pH * 0.28, pW * 0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Hai tai mèo phát sáng Cyan 432Hz
+  ctx.fillStyle = "#00f0ff";
+  ctx.shadowColor = "#00f0ff";
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  ctx.moveTo(pX + pW * 0.4, pY + pH * 0.2);
+  ctx.lineTo(pX + pW * 0.45, pY + pH * 0.1);
+  ctx.lineTo(pX + pW * 0.48, pY + pH * 0.2);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(pX + pW * 0.52, pY + pH * 0.2);
+  ctx.lineTo(pX + pW * 0.55, pY + pH * 0.1);
+  ctx.lineTo(pX + pW * 0.6, pY + pH * 0.2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // 4. Bi (Cầm lái phía trước - Áo rêu phong trần + Cờ-lê khổng lồ)
+  ctx.fillStyle = "#1f4e38"; // Áo khoác rêu Bi
+  ctx.beginPath();
+  ctx.arc(pX + pW * 0.5, pY + pH * 0.32, pW * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Mũ bảo hiểm xám đen Bi
+  ctx.fillStyle = "#21262d";
+  ctx.beginPath();
+  ctx.arc(pX + pW * 0.5, pY + pH * 0.16, pW * 0.17, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cờ-lê cơ khí vác chéo sau lưng
+  ctx.strokeStyle = "#8b949e";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(pX + pW * 0.28, pY + pH * 0.38);
+  ctx.lineTo(pX + pW * 0.72, pY + pH * 0.08);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// --- MAIN RENDER FUNCTION ---
+function renderFrame() {
+  ctx.clearRect(0, 0, width, height);
+
+  // 1. Sky & Western Mountains Background (Hoàng hôn Tây Bắc)
+  const grad = ctx.createLinearGradient(0, 0, 0, height / 2);
+  grad.addColorStop(0, '#0d1117');
+  grad.addColorStop(0.6, '#1a2333');
+  grad.addColorStop(1, '#d29922');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, width, height / 2);
+
+  // Silhouettes of rolling mountains
+  ctx.fillStyle = "#0c1524";
+  ctx.beginPath();
+  ctx.moveTo(0, height / 2);
+  for (let x = 0; x <= width; x += 40) {
+    const my = (height / 2) - 60 - Math.sin((x + position * 0.02) * 0.01) * 45;
+    ctx.lineTo(x, my);
+  }
+  ctx.lineTo(width, height / 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // 2. Render 3D Road Segments (Back-to-Front Projection)
+  const baseSegment = findSegment(position);
+  const basePercent = (position % segmentLength) / segmentLength;
+  let dx = - (baseSegment.curve * basePercent);
+  let x = 0;
+  let maxY = height;
+
+  const playerSegment = findSegment(position + playerZ);
+  const playerPercent = ((position + playerZ) % segmentLength) / segmentLength;
+  const playerY = (playerSegment.p1.world.y + (playerSegment.p2.world.y - playerSegment.p1.world.y) * playerPercent);
+
+  for (let n = 0; n < drawDistance; n++) {
+    const segment = segments[(baseSegment.index + n) % totalSegments];
+    const looped = segment.index < baseSegment.index;
+    const cameraZ = position - (looped ? trackLength : 0);
+
+    project(segment.p1, (playerX * roadWidth) - x, cameraHeight + playerY, cameraZ, cameraDepth, width, height, roadWidth);
+    project(segment.p2, (playerX * roadWidth) - x - dx, cameraHeight + playerY, cameraZ, cameraDepth, width, height, roadWidth);
+
+    x += dx;
+    dx += segment.curve;
+
+    if ((segment.p1.camera.z <= cameraDepth) || (segment.p2.screen.y >= maxY)) continue;
+
+    // Draw Grass / Valley
+    ctx.fillStyle = segment.color.grass;
+    ctx.fillRect(0, segment.p2.screen.y, width, segment.p1.screen.y - segment.p2.screen.y);
+
+    // Draw Road Surface
+    drawPolygon(
+      segment.p1.screen.x - segment.p1.screen.w, segment.p1.screen.y,
+      segment.p1.screen.x + segment.p1.screen.w, segment.p1.screen.y,
+      segment.p2.screen.x + segment.p2.screen.w, segment.p2.screen.y,
+      segment.p2.screen.x - segment.p2.screen.w, segment.p2.screen.y,
+      segment.color.road
+    );
+
+    // Draw Rumble Strip (Hộ lan / Gờ giảm tốc Cyan 432Hz)
+    const r1 = segment.p1.screen.w / 6;
+    const r2 = segment.p2.screen.w / 6;
+    drawPolygon(
+      segment.p1.screen.x - segment.p1.screen.w - r1, segment.p1.screen.y,
+      segment.p1.screen.x - segment.p1.screen.w, segment.p1.screen.y,
+      segment.p2.screen.x - segment.p2.screen.w, segment.p2.screen.y,
+      segment.p2.screen.x - segment.p2.screen.w - r2, segment.p2.screen.y,
+      segment.color.rumble
+    );
+    drawPolygon(
+      segment.p1.screen.x + segment.p1.screen.w, segment.p1.screen.y,
+      segment.p1.screen.x + segment.p1.screen.w + r1, segment.p1.screen.y,
+      segment.p2.screen.x + segment.p2.screen.w + r2, segment.p2.screen.y,
+      segment.p2.screen.x + segment.p2.screen.w, segment.p2.screen.y,
+      segment.color.rumble
+    );
+
+    // Center yellow dash line
+    if (segment.color.lane !== 'transparent') {
+      const l1 = segment.p1.screen.w / 28;
+      const l2 = segment.p2.screen.w / 28;
+      drawPolygon(
+        segment.p1.screen.x - l1, segment.p1.screen.y,
+        segment.p1.screen.x + l1, segment.p1.screen.y,
+        segment.p2.screen.x + l2, segment.p2.screen.y,
+        segment.p2.screen.x - l2, segment.p2.screen.y,
+        segment.color.lane
+      );
     }
 
-    // Guardrails (Hộ lan mềm)
-    const railL = new THREE.Mesh(guardGeo, guardMat);
-    railL.position.set(-ROAD_WIDTH/2 + 0.3, 0.4, 0);
-    segment.add(railL);
-
-    const railR = new THREE.Mesh(guardGeo, guardMat);
-    railR.position.set(ROAD_WIDTH/2 - 0.3, 0.4, 0);
-    segment.add(railR);
-
-    segment.position.z = -i * SEGMENT_LENGTH;
-    scene.add(segment);
-    roadSegments.push(segment);
-  }
-}
-
-function createScooter() {
-  scooterGroup = new THREE.Group();
-
-  // 1. Scooter Body (Chassis) - Sleek Grey Air Blade
-  const bodyGeo = new THREE.BoxGeometry(0.9, 0.6, 2.0);
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3d4451, roughness: 0.3, metalness: 0.6 });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.6;
-  scooterGroup.add(body);
-
-  // Front Cowl & Windshield
-  const frontGeo = new THREE.ConeGeometry(0.5, 0.9, 4);
-  const front = new THREE.Mesh(frontGeo, bodyMat);
-  front.rotation.x = -Math.PI / 3;
-  front.position.set(0, 0.9, -0.9);
-  scooterGroup.add(front);
-
-  // Headlight (Cyan 432Hz Glow)
-  const lightGeo = new THREE.BoxGeometry(0.5, 0.2, 0.1);
-  const lightMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-  const headlight = new THREE.Mesh(lightGeo, lightMat);
-  headlight.position.set(0, 0.8, -1.25);
-  scooterGroup.add(headlight);
-
-  // Headlight Beam
-  const spot = new THREE.SpotLight(0x00f0ff, 2, 40, Math.PI / 5, 0.4);
-  spot.position.set(0, 0.8, -1.2);
-  spot.target.position.set(0, 0, -20);
-  scene.add(spot.target);
-  scooterGroup.add(spot);
-
-  // 2. Wheels
-  const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 16);
-  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-
-  const frontWheel = new THREE.Mesh(wheelGeo, wheelMat);
-  frontWheel.rotation.z = Math.PI / 2;
-  frontWheel.position.set(0, 0.35, -0.9);
-  scooterGroup.add(frontWheel);
-  wheels.push(frontWheel);
-
-  const rearWheel = new THREE.Mesh(wheelGeo, wheelMat);
-  rearWheel.rotation.z = Math.PI / 2;
-  rearWheel.position.set(0, 0.35, 0.8);
-  scooterGroup.add(rearWheel);
-  wheels.push(rearWheel);
-
-  // 3. Characters on Scooter
-  // Bi (Driver - Front)
-  const biBodyGeo = new THREE.BoxGeometry(0.7, 0.9, 0.5);
-  const biMat = new THREE.MeshLambertMaterial({ color: 0x1f4e38 }); // Dark green jacket
-  const biBody = new THREE.Mesh(biBodyGeo, biMat);
-  biBody.position.set(0, 1.3, -0.2);
-  scooterGroup.add(biBody);
-
-  const biHeadGeo = new THREE.SphereGeometry(0.3, 12, 12);
-  const biHeadMat = new THREE.MeshLambertMaterial({ color: 0x24292f }); // Helmet
-  const biHead = new THREE.Mesh(biHeadGeo, biHeadMat);
-  biHead.position.set(0, 1.9, -0.15);
-  scooterGroup.add(biHead);
-
-  // Wrench on Bi's back
-  const wrenchGeo = new THREE.BoxGeometry(0.12, 1.1, 0.1);
-  const wrenchMat = new THREE.MeshStandardMaterial({ color: 0x8b949e, metalness: 0.8 });
-  const wrench = new THREE.Mesh(wrenchGeo, wrenchMat);
-  wrench.rotation.z = Math.PI / 4;
-  wrench.position.set(0.1, 1.4, 0.1);
-  scooterGroup.add(wrench);
-
-  // Hạnh (Passenger - Back)
-  const hanhBodyGeo = new THREE.BoxGeometry(0.6, 0.8, 0.45);
-  const hanhMat = new THREE.MeshLambertMaterial({ color: 0x8957e5 }); // Violet jacket
-  const hanhBody = new THREE.Mesh(hanhBodyGeo, hanhMat);
-  hanhBody.position.set(0, 1.25, 0.45);
-  scooterGroup.add(hanhBody);
-
-  const hanhHeadGeo = new THREE.SphereGeometry(0.28, 12, 12);
-  const hanhHeadMat = new THREE.MeshLambertMaterial({ color: 0xffffff }); // White helmet with cat ears
-  const hanhHead = new THREE.Mesh(hanhHeadGeo, hanhHeadMat);
-  hanhHead.position.set(0, 1.8, 0.45);
-  scooterGroup.add(hanhHead);
-
-  // Cute Cat Ears on Hạnh's helmet
-  const earGeo = new THREE.ConeGeometry(0.1, 0.2, 4);
-  const earMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-  const earL = new THREE.Mesh(earGeo, earMat);
-  earL.position.set(-0.2, 2.05, 0.45);
-  scooterGroup.add(earL);
-
-  const earR = new THREE.Mesh(earGeo, earMat);
-  earR.position.set(0.2, 2.05, 0.45);
-  scooterGroup.add(earR);
-
-  scooterGroup.position.set(0, 0, 0);
-  scene.add(scooterGroup);
-}
-
-// Spawn Obstacles (Trucks, Rockfalls, 5G Towers)
-function spawnObstacle(zPos) {
-  const type = Math.random();
-  const obs = new THREE.Group();
-  const laneX = (Math.random() * (ROAD_WIDTH - 3.5)) - (ROAD_WIDTH - 3.5)/2;
-
-  if (type < 0.5) {
-    // Green Truck (Xe tải lấn làn)
-    const truckGeo = new THREE.BoxGeometry(2.6, 2.4, 5.0);
-    const truckMat = new THREE.MeshLambertMaterial({ color: 0xa371f7 });
-    const truck = new THREE.Mesh(truckGeo, truckMat);
-    truck.position.y = 1.3;
-    obs.add(truck);
-    obs.userData = { type: 'truck', radius: 1.8 };
-  } else {
-    // Rockfall (Đá tai mèo sạt lở)
-    const rockGeo = new THREE.DodecahedronGeometry(1.2);
-    const rockMat = new THREE.MeshLambertMaterial({ color: 0x6e7681, flatShading: true });
-    const rock = new THREE.Mesh(rockGeo, rockMat);
-    rock.position.y = 0.9;
-    obs.add(rock);
-    obs.userData = { type: 'rock', radius: 1.4 };
+    maxY = segment.p2.screen.y;
   }
 
-  obs.position.set(laneX, 0, zPos);
-  scene.add(obs);
-  obstacles.push(obs);
-}
+  // 3. Render Sprites from back to front
+  for (let n = drawDistance - 1; n > 0; n--) {
+    const segment = segments[(baseSegment.index + n) % totalSegments];
+    for (let i = 0; i < segment.sprites.length; i++) {
+      const sprite = segment.sprites[i];
+      const scale = segment.p1.screen.scale;
+      drawSprite(sprite, segment.p1, scale);
 
-// Spawn Collectibles (Tea Cups & Mangoes)
-function spawnCollectible(zPos) {
-  const isTea = Math.random() < 0.5;
-  const col = new THREE.Group();
-  const laneX = (Math.random() * (ROAD_WIDTH - 4)) - (ROAD_WIDTH - 4)/2;
-
-  if (isTea) {
-    // Tea Cup 🍵 (Cool down brakes)
-    const cupGeo = new THREE.CylinderGeometry(0.35, 0.25, 0.5, 12);
-    const cupMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-    const cup = new THREE.Mesh(cupGeo, cupMat);
-    col.add(cup);
-    col.userData = { type: 'tea', value: 100, radius: 1.0 };
-  } else {
-    // Mango 🥭 (Bonus score)
-    const mangoGeo = new THREE.SphereGeometry(0.4, 8, 8);
-    const mangoMat = new THREE.MeshBasicMaterial({ color: 0xf0b429 });
-    const mango = new THREE.Mesh(mangoGeo, mangoMat);
-    mango.scale.set(1, 1.4, 0.8);
-    col.add(mango);
-    col.userData = { type: 'mango', value: 50, radius: 1.0 };
+      // Check Collision with player (when near z=0)
+      if (n === 2) {
+        const pDist = Math.abs(playerX - sprite.offset);
+        if (pDist < sprite.width * 0.4) {
+          if (sprite.type === 'truck' || sprite.type === 'rock') {
+            playSfx('crash');
+            triggerGameOver("VA CHẠM TRÊN ĐÈO!", `Bi đã đâm vào ${sprite.type==='truck'?'Xe Tải lấn làn':'Đá tai mèo sạt lở'}!`);
+            return;
+          } else if (sprite.type === 'tea') {
+            playSfx('pickup');
+            itemsCollected++;
+            brakeTemp = Math.max(25, brakeTemp - 60); // Nước trà làm mát phanh
+            segment.sprites.splice(i, 1);
+          } else if (sprite.type === 'mango') {
+            playSfx('pickup');
+            itemsCollected++;
+            segment.sprites.splice(i, 1);
+          }
+        }
+      }
+    }
   }
 
-  col.position.set(laneX, 0.8, zPos);
-  scene.add(col);
-  collectibles.push(col);
+  // 4. Draw Player (Air Blade 125)
+  const lean = keys.left ? -1 : (keys.right ? 1 : 0);
+  drawPlayer(lean);
 }
 
-// Initial spawns
-for (let i = 1; i < 8; i++) {
-  spawnObstacle(-i * 40 - 20);
-  spawnCollectible(-i * 35 - 10);
-}
+// --- PHYSICS & GAME MECHANICS ---
+let lastFrameTime = performance.now();
 
-// --- INPUT LISTENERS (TOUCH & KEYBOARD) ---
-function setupControls() {
-  // Keyboard
-  window.addEventListener('keydown', (e) => {
-    initAudio();
-    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
-    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
-    if (e.code === 'Space' || e.code === 'KeyS' || e.code === 'ArrowDown') keys.brake = true;
-    if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.gas = true;
-  });
+function gameLoop(now) {
+  requestAnimationFrame(gameLoop);
 
-  window.addEventListener('keyup', (e) => {
-    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
-    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
-    if (e.code === 'Space' || e.code === 'KeyS' || e.code === 'ArrowDown') keys.brake = false;
-    if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.gas = false;
-  });
-
-  // Touch buttons
-  function bindTouch(id, keyName) {
-    const btn = document.getElementById(id);
-    const start = (e) => { e.preventDefault(); initAudio(); keys[keyName] = true; btn.classList.add('pressed'); };
-    const end = (e) => { e.preventDefault(); keys[keyName] = false; btn.classList.remove('pressed'); };
-    btn.addEventListener('touchstart', start, { passive: false });
-    btn.addEventListener('touchend', end, { passive: false });
-    btn.addEventListener('mousedown', start);
-    btn.addEventListener('mouseup', end);
-    btn.addEventListener('mouseleave', end);
-  }
-
-  bindTouch('btn-left', 'left');
-  bindTouch('btn-right', 'right');
-  bindTouch('btn-brake', 'brake');
-  bindTouch('btn-gas', 'gas');
-}
-
-// --- MAIN GAME LOOP (PHYSICS & MECHANICS) ---
-let lastTime = performance.now();
-
-function animate(now) {
-  requestAnimationFrame(animate);
-
-  const dt = Math.min((now - lastTime) / 1000, 0.1);
-  lastTime = now;
+  const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
+  lastFrameTime = now;
 
   if (isRunning) {
     updatePhysics(dt);
   }
 
-  renderer.render(scene, camera);
+  renderFrame();
 }
 
 function updatePhysics(dt) {
-  // 1. Dốc 10% Gravity Acceleration
-  // Without braking, 10% slope pulls scooter faster & faster
-  const gravityAccel = 18.0; // km/h per second acceleration on 10% slope
+  // Gravity acceleration on 10% slope
+  const gravityPush = 16.0; // km/h/s
 
   if (keys.brake) {
-    // Cadence braking effect
-    speed -= 35.0 * dt; // Strong deceleration
-    brakeTemp += 45.0 * dt; // Rapid heat build-up
+    speed -= 35.0 * dt;
+    brakeTemp += 40.0 * dt; // Rà phanh tăng nhiệt
     playSfx('brake');
   } else if (keys.gas) {
     speed += 20.0 * dt;
-    brakeTemp -= 8.0 * dt; // Natural cooling
+    brakeTemp -= 8.0 * dt;
   } else {
-    // Coasting down 10% slope -> accelerates naturally!
-    speed += gravityAccel * dt;
-    brakeTemp -= 12.0 * dt; // Wind cooling while rolling
+    speed += gravityPush * dt; // Trôi dốc tự do gia tốc
+    brakeTemp -= 12.0 * dt; // Gió tản nhiệt tự nhiên
   }
 
-  // Natural minimum speed and safety limits
   speed = Math.max(15, speed);
   brakeTemp = Math.max(25, brakeTemp);
 
-  // Check BRAKE FADE / OVERHEAT (Cháy phanh)
+  // Check Cháy Phanh (Overheat > 280°C)
   if (brakeTemp > 280) {
-    triggerGameOver("CHÁY PHANH DO RÀ PHANH LIÊN TỤC!", "Má phanh quá nhiệt 300°C làm sôi dầu phanh, mất lực hãm hoàn toàn và lao thẳng xuống vực! Hãy nhấp nhả phanh theo nhịp!");
-    return;
-  }
-
-  // 2. Lateral Movement & Leaning into Curves
-  if (keys.left) {
-    lateralSpeed = -7.5;
-  } else if (keys.right) {
-    lateralSpeed = 7.5;
-  } else {
-    lateralSpeed *= 0.85; // damping
-  }
-
-  lateralPos += lateralSpeed * dt;
-  // Road boundary check
-  const maxLat = (ROAD_WIDTH / 2) - 1.2;
-  if (lateralPos < -maxLat || lateralPos > maxLat) {
     playSfx('crash');
-    triggerGameOver("HÚC VÀO HỘ LAN ĐÈO!", "Xe ôm cua quá tốc độ bị văng ra khỏi lòng đường! Hãy giảm tốc độ trước khi vào khúc ngoặt!");
+    triggerGameOver("CHÁY PHANH LAO VỰC!", "Bi bóp giữ phanh liên tục khiến nhiệt độ vượt 300°C làm sôi dầu phanh, mất lực hãm hoàn toàn! Hãy nhấp nhả phanh theo nhịp!");
     return;
   }
 
-  // Apply Scooter Transforms
-  scooterGroup.position.x = lateralPos;
-  // Lean angle (nghiêng xe khi cua)
-  scooterGroup.rotation.z = -lateralSpeed * 0.05;
-  scooterGroup.rotation.y = -lateralSpeed * 0.03;
+  // Steering
+  if (keys.left) playerX -= 1.8 * dt;
+  if (keys.right) playerX += 1.8 * dt;
 
-  // Spin wheels
-  wheels.forEach(w => w.rotation.x -= speed * dt * 0.4);
+  // Centrifugal curve push
+  const currentSeg = findSegment(position + playerZ);
+  playerX -= (currentSeg.curve * (speed / 100) * dt * 0.7);
 
-  // 3. Move Road and Environment Forward (Endless Runner Effect)
-  const forwardStep = (speed * 1000 / 3600) * dt; // m/s to delta meters
-  distanceTraveled += forwardStep;
-
-  // Shift road segments
-  roadSegments.forEach(seg => {
-    seg.position.z += forwardStep;
-    if (seg.position.z > SEGMENT_LENGTH * 2) {
-      seg.position.z -= NUM_SEGMENTS * SEGMENT_LENGTH;
-    }
-  });
-
-  // Shift mountains slowly (parallax depth)
-  mountainMeshes.forEach(mtn => {
-    mtn.position.z += forwardStep * 0.25;
-    if (mtn.position.z > 20) {
-      mtn.position.z -= 700;
-    }
-  });
-
-  // 4. Update Obstacles & Collision Check
-  for (let i = obstacles.length - 1; i >= 0; i--) {
-    const obs = obstacles[i];
-    obs.position.z += forwardStep;
-
-    // Collision check with scooter (at z=0)
-    const dz = Math.abs(obs.position.z - scooterGroup.position.z);
-    const dx = Math.abs(obs.position.x - scooterGroup.position.x);
-
-    if (dz < 1.6 && dx < obs.userData.radius) {
-      playSfx('crash');
-      triggerGameOver("VA CHẠM VẬT CẢN TRÊN ĐÈO!", `Bi đã va chạm với ${obs.userData.type === 'truck' ? 'Xe Tải lấn làn' : 'Đá sạt lở tai mèo'}!`);
-      return;
-    }
-
-    // Recycle passed obstacles
-    if (obs.position.z > 15) {
-      scene.remove(obs);
-      obstacles.splice(i, 1);
-      spawnObstacle(-350 - Math.random() * 50);
-    }
+  // Offroad / Húc Hộ Lan Check
+  if (playerX < -1.25 || playerX > 1.25) {
+    playSfx('crash');
+    triggerGameOver("HÚC VÀO HỘ LAN ĐÈO!", "Xe chạy quá tốc độ bị văng ra khỏi mặt đường đèo! Hãy giảm tốc độ trước khi vào khúc ngoặt!");
+    return;
   }
 
-  // 5. Update Collectibles
-  for (let i = collectibles.length - 1; i >= 0; i--) {
-    const col = collectibles[i];
-    col.position.z += forwardStep;
-    col.rotation.y += 2.5 * dt;
+  // Forward Motion
+  const speedMS = (speed * 1000 / 3600);
+  position += speedMS * dt * 100;
+  distanceMeters += speedMS * dt;
 
-    const dz = Math.abs(col.position.z - scooterGroup.position.z);
-    const dx = Math.abs(col.position.x - scooterGroup.position.x);
+  while (position >= trackLength) position -= trackLength;
+  while (position < 0) position += trackLength;
 
-    if (dz < 1.4 && dx < col.userData.radius) {
-      playSfx('pickup');
-      itemsCollected++;
-      if (col.userData.type === 'tea') {
-        // Tea cools down brakes!
-        brakeTemp = Math.max(25, brakeTemp - 60);
-      }
-      scene.remove(col);
-      collectibles.splice(i, 1);
-      spawnCollectible(-320 - Math.random() * 60);
-    } else if (col.position.z > 15) {
-      scene.remove(col);
-      collectibles.splice(i, 1);
-      spawnCollectible(-320 - Math.random() * 60);
-    }
-  }
-
-  // 6. Camera Dynamic Follow
-  camera.position.x = lateralPos * 0.4;
-  camera.lookAt(lateralPos * 0.6, 1.2, -12);
-
-  // 7. Update HUD
   updateHUD();
 }
 
 function updateHUD() {
   document.getElementById('hud-speed').innerText = Math.round(speed);
-  document.getElementById('hud-dist').innerText = `${(distanceTraveled / 1000).toFixed(1)} km`;
+  document.getElementById('hud-dist').innerText = `${(distanceMeters / 1000).toFixed(1)} km`;
   document.getElementById('hud-score').innerText = itemsCollected;
 
   const tempFill = document.getElementById('hud-temp-fill');
@@ -829,9 +818,43 @@ function updateHUD() {
     statusTag.style.background = '#d29922';
   } else {
     tempFill.style.background = '#da3633';
-    statusTag.innerText = "CỰC NÓNG (SẮP CHÁY)";
+    statusTag.innerText = "SẮP CHÁY PHANH";
     statusTag.style.background = '#da3633';
   }
+}
+
+// --- TOUCH & KEY CONTROLS ---
+function setupInput() {
+  window.addEventListener('keydown', (e) => {
+    initAudio();
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+    if (e.code === 'Space' || e.code === 'KeyS' || e.code === 'ArrowDown') keys.brake = true;
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.gas = true;
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+    if (e.code === 'Space' || e.code === 'KeyS' || e.code === 'ArrowDown') keys.brake = false;
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.gas = false;
+  });
+
+  function bindTouch(id, keyName) {
+    const btn = document.getElementById(id);
+    const start = (e) => { e.preventDefault(); initAudio(); keys[keyName] = true; btn.classList.add('pressed'); };
+    const end = (e) => { e.preventDefault(); keys[keyName] = false; btn.classList.remove('pressed'); };
+    btn.addEventListener('touchstart', start, { passive: false });
+    btn.addEventListener('touchend', end, { passive: false });
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', end);
+    btn.addEventListener('mouseleave', end);
+  }
+
+  bindTouch('btn-left', 'left');
+  bindTouch('btn-right', 'right');
+  bindTouch('btn-brake', 'brake');
+  bindTouch('btn-gas', 'gas');
 }
 
 function startGame() {
@@ -839,53 +862,32 @@ function startGame() {
   document.getElementById('start-modal').style.display = 'none';
   document.getElementById('gameover-modal').style.display = 'none';
   isRunning = true;
-  lastTime = performance.now();
+  lastFrameTime = performance.now();
 }
 
 function triggerGameOver(title, desc) {
   isRunning = false;
   document.getElementById('go-title').innerText = title;
   document.getElementById('go-desc').innerText = desc;
-  document.getElementById('go-dist').innerText = `${(distanceTraveled / 1000).toFixed(2)} km`;
+  document.getElementById('go-dist').innerText = `${(distanceMeters / 1000).toFixed(2)} km`;
   document.getElementById('gameover-modal').style.display = 'flex';
 }
 
 function restartGame() {
   speed = 35;
-  lateralPos = 0;
-  lateralSpeed = 0;
+  playerX = 0;
+  position = 0;
   brakeTemp = 30;
-  distanceTraveled = 0;
+  distanceMeters = 0;
   itemsCollected = 0;
-
-  // Reset obstacles & collectibles
-  obstacles.forEach(o => scene.remove(o));
-  collectibles.forEach(c => scene.remove(c));
-  obstacles = [];
-  collectibles = [];
-
-  for (let i = 1; i < 8; i++) {
-    spawnObstacle(-i * 40 - 20);
-    spawnCollectible(-i * 35 - 10);
-  }
-
+  buildRoad();
   startGame();
 }
 
-window.addEventListener('resize', () => {
-  if (camera && renderer) {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  }
-});
-
-// Startup
-window.onload = () => {
-  initThree();
-  setupControls();
-  requestAnimationFrame(animate);
-};
+// Auto Init
+buildRoad();
+setupInput();
+requestAnimationFrame(gameLoop);
 </script>
 </body>
 </html>

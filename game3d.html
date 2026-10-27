@@ -357,7 +357,7 @@ const roadWidth = 2000;
 const segmentLength = 200;
 const rumbleLength = 3;
 const cameraHeight = 1000;
-const cameraDepth = 0.84;
+const cameraDepth = 0.22;
 const drawDistance = 280;
 
 let segments = [];
@@ -645,7 +645,8 @@ function renderFrame() {
     x += dx;
     dx += segment.curve;
 
-    if ((segment.p1.camera.z <= cameraDepth) || (segment.p2.screen.y >= maxY)) continue;
+    if (segment.p1.camera.z <= 0) continue;
+    if (segment.p2.screen.y >= maxY) { maxY = segment.p2.screen.y; continue; }
 
     // Draw Grass / Valley
     ctx.fillStyle = segment.color.grass;

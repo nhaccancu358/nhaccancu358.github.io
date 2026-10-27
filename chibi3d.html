@@ -4,13 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>AB 125 Chibi 3D Đổ Đèo - Căn Cứ 358</title>
-<!-- Primary & Fallback Three.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script>
-  if (typeof THREE === 'undefined') {
-    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
-  }
-</script>
+<!-- Tải Three.js trực tiếp cùng tên miền nhaccancu358.github.io, không qua trung gian CDN -->
+<script src="three.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body {
@@ -204,6 +199,10 @@
 <body>
 
 <div id="canvas-container"></div>
+  <!-- Debug / Loading Banner -->
+  <div id="debug-status" style="position:absolute; top:45%; left:10%; width:80%; text-align:center; background:rgba(0,0,0,0.8); color:#00f0ff; padding:12px; border-radius:12px; font-weight:bold; font-size:13px; z-index:999; border:1px solid #00f0ff;">Đang khởi động cỗ máy 3D...</div>
+  <div id="debug-error" style="display:none; position:absolute; top:35%; left:5%; width:90%; background:#da3633; color:white; padding:14px; border-radius:12px; font-size:12px; z-index:9999; border:2px solid white; line-height:1.6;"></div>
+
 
 <!-- HUD -->
 <div id="hud-overlay">
@@ -988,12 +987,24 @@ window.addEventListener('resize', () => {
 
 function launchGame() {
   if (typeof THREE === 'undefined') {
-    setTimeout(launchGame, 50);
+    const s = document.getElementById('debug-status');
+    if (s) s.innerText = 'Đang tải tệp Three.js từ máy chủ...';
+    setTimeout(launchGame, 100);
     return;
   }
-  initThreeScene();
-  setupTouchAndKeys();
-  requestAnimationFrame(animate);
+  try {
+    initThreeScene();
+    setupTouchAndKeys();
+    requestAnimationFrame(animate);
+    const s = document.getElementById('debug-status');
+    if (s) s.style.display = 'none';
+  } catch(e) {
+    const err = document.getElementById('debug-error');
+    if (err) {
+      err.style.display = 'block';
+      err.innerHTML = '<strong>LỖI KHỞI ĐỘNG 3D:</strong><br>' + e.message + '<br><small>' + (e.stack || '') + '</small>';
+    }
+  }
 }
 
 if (document.readyState === 'loading') {

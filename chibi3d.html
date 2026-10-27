@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AB 125 Chibi 3D Đổ Đèo - Căn Cứ 358</title>
+<!-- Primary & Fallback Three.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script>
+  if (typeof THREE === 'undefined') {
+    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+  }
+</script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #7ec0ee;
+    color: #1a1a1a;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  #canvas-container {
+    position: absolute;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 1;
+  }
+  
+  /* HUD Overlay */
+  #hud-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 10;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px;
+  }
+  .hud-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .chibi-card {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #388bfd;
+    border-radius: 12px;
+    padding: 8px 12px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(8px);
+  }
+  .speed-num {
+    font-size: 32px;
+    font-weight: 900;
+    font-family: monospace;
+    color: #1f6feb;
+  }
+  .speed-unit { font-size: 11px; font-weight: 800; color: #57606a; text-transform: uppercase; }
+  
+  .brake-bar-bg {
+    width: 130px;
+    height: 8px;
+    background: #e1e4e8;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 4px;
+    border: 1px solid #d1d5da;
+  }
+  .brake-bar-fill {
+    height: 100%;
+    width: 20%;
+    background: #28a745;
+    transition: width 0.15s, background-color 0.25s;
+  }
+  
+  .badge-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 800;
+    color: white;
+    background: #28a745;
+    margin-top: 4px;
+  }
+
+  /* Gyroscope Indicator */
+  #gyro-status {
+    background: rgba(255, 255, 255, 0.92);
+    border: 2px solid #00f0ff;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 800;
+    color: #0366d6;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+
+  /* Control buttons bar */
+  #control-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 16px 20px 16px;
+    z-index: 20;
+    pointer-events: auto;
+  }
+  .touch-btn {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    border: 3px solid #1f6feb;
+    color: #1f6feb;
+    font-size: 26px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2), inset 0 0 8px rgba(31, 111, 235, 0.2);
+    user-select: none;
+    touch-action: none;
+  }
+  .touch-btn:active, .touch-btn.active {
+    background: #1f6feb;
+    color: white;
+    transform: scale(0.92);
+  }
+  .btn-brake {
+    border-color: #d73a49 !important;
+    color: #d73a49 !important;
+    background: rgba(255, 245, 245, 0.95) !important;
+  }
+  .btn-brake:active, .btn-brake.active {
+    background: #d73a49 !important;
+    color: white !important;
+  }
+
+  /* Center buttons */
+  .center-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-action-small {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #d1d5da;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #24292e;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+  }
+
+  /* Modal Screens */
+  .modal-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(13, 17, 23, 0.85);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+  .chibi-modal-card {
+    max-width: 420px;
+    width: 100%;
+    background: white;
+    border-radius: 20px;
+    border: 3px solid #58a6ff;
+    padding: 22px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+  .btn-play-big {
+    background: linear-gradient(180deg, #2ea043, #238636);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    font-size: 17px;
+    font-weight: 800;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(46, 160, 67, 0.4);
+    margin-top: 14px;
+    display: inline-block;
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- HUD -->
+<div id="hud-overlay">
+  <div class="hud-top">
+    <div class="chibi-card">
+      <div style="font-weight:900; font-size:12px; color:#0366d6;">🏔️ ĐÈO TÂY BẮC • CHIBI 3D</div>
+      <div style="font-size:11px; color:#57606a; margin-top:2px;">Độ dốc: <strong style="color:#d93f0b;">-10% (GẮT)</strong></div>
+      <div style="font-size:11px; color:#28a745; margin-top:2px;">Quãng đường: <strong id="hud-dist">0.0 km</strong></div>
+      <div style="font-size:11px; color:#d97706; margin-top:2px;">Trà & Xoài: <strong id="hud-score">0</strong></div>
+    </div>
+
+    <div class="chibi-card" style="text-align:right;">
+      <div class="speed-num" id="hud-speed">35</div>
+      <div class="speed-unit">KM / GIỜ</div>
+      <div style="font-size:10px; font-weight:bold; color:#57606a; margin-top:4px;">NHIỆT PHANH</div>
+      <div class="brake-bar-bg"><div class="brake-bar-fill" id="hud-brake-fill"></div></div>
+      <div class="badge-pill" id="hud-brake-badge">PHANH TỐT</div>
+    </div>
+  </div>
+
+  <!-- Center Status: Tilt Sensor -->
+  <div style="display:flex; justify-content:center;">
+    <div id="gyro-status">
+      <span>📱</span>
+      <span id="gyro-text">CẢM BIẾN NGHIÊNG: TỰ ĐỘNG</span>
+    </div>
+  </div>
+
+  <!-- Touch Controls -->
+  <div id="control-bar">
+    <div style="display:flex; gap:12px;">
+      <div class="touch-btn" id="btn-left">◀</div>
+      <div class="touch-btn" id="btn-right">▶</div>
+    </div>
+
+    <div class="center-actions">
+      <button class="btn-action-small" id="btn-toggle-gyro">📱 BẬT LẮC TAY (TILT)</button>
+      <button class="btn-action-small" id="btn-sound">🎵 NHẠC 432HZ</button>
+    </div>
+
+    <div style="display:flex; gap:12px;">
+      <div class="touch-btn btn-brake" id="btn-brake">🛑</div>
+      <div class="touch-btn" id="btn-gas">⚡</div>
+    </div>
+  </div>
+</div>
+
+<!-- Start Modal -->
+<div class="modal-overlay" id="start-modal">
+  <div class="chibi-modal-card">
+    <div style="font-size:40px; margin-bottom:6px;">🛵💨🏔️</div>
+    <h2 style="color:#0366d6; font-size:22px; font-weight:900;">AB 125 ĐỔ ĐÈO CHIBI 3D</h2>
+    <p style="font-size:13px; color:#57606a; margin:8px 0; line-height:1.5;">
+      Bi (cờ-lê khổng lồ) chở Hạnh (nón tai mèo) đổ con đèo dốc gắt 10% giữa núi rừng Tây Bắc!
+    </p>
+
+    <div style="text-align:left; background:#f6f8fa; padding:12px; border-radius:12px; font-size:12px; line-height:1.6; margin:10px 0;">
+      ✨ <strong>ĐIỀU KHIỂN ĐỈNH CAO:</strong><br>
+      📱 <strong>Nghiêng điện thoại qua lại</strong> như cầm ghi-đông thật để ôm cua!<br>
+      🛑 <strong>Nút Phanh đỏ (hoặc Phím Space/S):</strong> Nhấp nhả phanh hãm tốc độ 25 - 35 km/h.<br>
+      ⚠️ <em>MẸO SINH TỬ:</em> Rà phanh liên tục sẽ <strong>CHÁY PHANH</strong>! Hãy nhấp nhả và nhặt 🍵 <strong>Chén trà</strong> để làm mát đĩa phanh!<br>
+      🥭 Nhặt <strong>Quả xoài</strong> để tích lũy điểm số tự do.
+    </div>
+
+    <button class="btn-play-big" onclick="startGame()">VẶN GA XUẤT PHÁT!</button>
+  </div>
+</div>
+
+<!-- Game Over Modal -->
+<div class="modal-overlay" id="gameover-modal" style="display:none;">
+  <div class="chibi-modal-card">
+    <div style="font-size:42px; margin-bottom:6px;" id="go-icon">💥</div>
+    <h2 style="color:#d73a49; font-size:22px; font-weight:900;" id="go-title">MẤT PHANH LAO VỰC!</h2>
+    <p style="font-size:13px; color:#57606a; margin:8px 0; line-height:1.5;" id="go-desc"></p>
+    <div style="font-size:18px; font-weight:900; color:#28a745; margin:12px 0;">
+      Quãng đường đi được: <span id="go-dist">0.0 km</span>
+    </div>
+    <button class="btn-play-big" onclick="restartGame()">LÊN XE CHẠY LẠI!</button>
+  </div>
+</div>
+
+<script>
+// --- AUDIO SYNTHESIZER (432Hz Ambient & Foley) ---
+let audioCtx = null;
+let soundOn = true;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    startBGM();
+  }
+}
+
+function startBGM() {
+  if (!soundOn || !audioCtx) return;
+  const notes = [432, 486, 540, 648, 720]; // 432Hz Scale
+  let idx = 0;
+  setInterval(() => {
+    if (!soundOn || !audioCtx) return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(notes[idx % notes.length], audioCtx.currentTime);
+      g.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 1.2);
+      idx = (idx + Math.floor(Math.random() * 3) + 1);
+    } catch(e) {}
+  }, 1200);
+}
+
+function playSfx(type) {
+  if (!soundOn || !audioCtx) return;
+  try {
+    if (type === 'brake') {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(650 + Math.random()*150, audioCtx.currentTime);
+      g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      g.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.08);
+    } else if (type === 'pickup') {
+      [540, 720, 864, 1080].forEach((f, i) => {
+        setTimeout(() => {
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, audioCtx.currentTime);
+          g.gain.setValueAtTime(0.08, audioCtx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+          osc.connect(g);
+          g.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.2);
+        }, i * 50);
+      });
+    } else if (type === 'crash') {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.5);
+      g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      g.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.5);
+    }
+  } catch(e) {}
+}
+
+document.getElementById('btn-sound').onclick = () => {
+  soundOn = !soundOn;
+  document.getElementById('btn-sound').innerText = soundOn ? "🎵 NHẠC 432HZ" : "🔇 TẮT ÂM";
+};
+
+// --- THREE.JS 3D CHIBI ENGINE SETUP ---
+let scene, camera, renderer;
+let scooterGroup, wheels = [];
+let roadSegments = [];
+let obstacles = [];
+let collectibles = [];
+let mountainMeshes = [];
+let cloudMeshes = [];
+
+// Game Physics & State
+let isRunning = false;
+let speed = 35; // km/h
+let lateralPos = 0; // -1 to 1
+let lateralSpeed = 0;
+let brakeTemp = 30; // deg C
+let distanceMeters = 0;
+let itemsCollected = 0;
+let currentTiltDeg = 0;
+let gyroActive = false;
+
+// Input State
+const keys = { left: false, right: false, brake: false, gas: false };
+
+function initThreeScene() {
+  const container = document.getElementById('canvas-container');
+  scene = new THREE.Scene();
+  
+  // Bright Anime Sky Blue
+  scene.background = new THREE.Color(0x7ec0ee);
+  scene.fog = new THREE.FogExp2(0x9bd2f5, 0.008);
+
+  camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 3.4, 5.2);
+  camera.lookAt(0, 1.2, -10);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  // Bright Stylized Lighting
+  const ambient = new THREE.AmbientLight(0xffffff, 1.1);
+  scene.add(ambient);
+
+  const sun = new THREE.DirectionalLight(0xfff5e6, 1.4);
+  sun.position.set(30, 60, 20);
+  sun.castShadow = true;
+  scene.add(sun);
+
+  // Cyan Torus Glow from Bike
+  const cyanLight = new THREE.PointLight(0x00f0ff, 1.5, 25);
+  cyanLight.position.set(0, 2, -2);
+  scene.add(cyanLight);
+
+  // Build Scene
+  buildMountains();
+  buildClouds();
+  buildRoad();
+  buildChibiScooter();
+}
+
+// 1. Lush Green Chibi Mountains
+function buildMountains() {
+  const mtnGeo = new THREE.ConeGeometry(40, 75, 6);
+  const colors = [0x2ea043, 0x3fb950, 0x238636, 0x1f6feb];
+
+  for (let i = 0; i < 24; i++) {
+    const side = (i % 2 === 0) ? 1 : -1;
+    const mat = new THREE.MeshLambertMaterial({
+      color: colors[i % colors.length],
+      flatShading: true
+    });
+    const mtn = new THREE.Mesh(mtnGeo, mat);
+    const z = - (i * 30) - 20;
+    const x = side * (40 + Math.random() * 25);
+    mtn.position.set(x, 18 + Math.random() * 8, z);
+    mtn.scale.set(1 + Math.random()*0.4, 0.8 + Math.random()*0.5, 1 + Math.random()*0.4);
+    scene.add(mtn);
+    mountainMeshes.push(mtn);
+  }
+}
+
+// 2. Fluffy White Chibi Clouds
+function buildClouds() {
+  const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true });
+  for (let i = 0; i < 15; i++) {
+    const cloud = new THREE.Group();
+    for (let c = 0; c < 5; c++) {
+      const puff = new THREE.Mesh(new THREE.DodecahedronGeometry(3 + Math.random()*2), cloudMat);
+      puff.position.set(c * 2.5 - 5, Math.random()*1.5, Math.random()*2);
+      cloud.add(puff);
+    }
+    cloud.position.set((Math.random() - 0.5) * 160, 35 + Math.random()*15, -Math.random()*300);
+    scene.add(cloud);
+    cloudMeshes.push(cloud);
+  }
+}
+
+// 3. Colorful Mountain Road
+const ROAD_WIDTH = 12;
+const SEGMENT_LEN = 16;
+const NUM_SEGMENTS = 25;
+
+function buildRoad() {
+  const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, SEGMENT_LEN);
+  const roadMat = new THREE.MeshLambertMaterial({ color: 0x24292e });
+  const curbGeo = new THREE.BoxGeometry(0.5, 0.4, SEGMENT_LEN);
+  const curbMatRed = new THREE.MeshLambertMaterial({ color: 0xda3633 });
+  const curbMatWhite = new THREE.MeshLambertMaterial({ color: 0xffffff });
+
+  for (let i = 0; i < NUM_SEGMENTS; i++) {
+    const seg = new THREE.Group();
+
+    // Asphalt
+    const road = new THREE.Mesh(roadGeo, roadMat);
+    road.rotation.x = -Math.PI / 2;
+    road.receiveShadow = true;
+    seg.add(road);
+
+    // Center Yellow Dashes
+    if (i % 2 === 0) {
+      const dashGeo = new THREE.PlaneGeometry(0.35, SEGMENT_LEN * 0.65);
+      const dashMat = new THREE.MeshBasicMaterial({ color: 0xf0b429 });
+      const dash = new THREE.Mesh(dashGeo, dashMat);
+      dash.rotation.x = -Math.PI / 2;
+      dash.position.y = 0.02;
+      seg.add(dash);
+    }
+
+    // Red-and-White Rumble Curbs
+    const curbMat = (i % 2 === 0) ? curbMatRed : curbMatWhite;
+    const curbL = new THREE.Mesh(curbGeo, curbMat);
+    curbL.position.set(-ROAD_WIDTH/2 + 0.25, 0.2, 0);
+    seg.add(curbL);
+
+    const curbR = new THREE.Mesh(curbGeo, curbMat);
+    curbR.position.set(ROAD_WIDTH/2 - 0.25, 0.2, 0);
+    seg.add(curbR);
+
+    seg.position.z = -i * SEGMENT_LEN;
+    scene.add(seg);
+    roadSegments.push(seg);
+  }
+}
+
+// 4. Detailed Chibi Scooter with Bi & Hạnh!
+function buildChibiScooter() {
+  scooterGroup = new THREE.Group();
+
+  // Scooter Body (Sporty Metallic Grey Air Blade)
+  const bodyGeo = new THREE.BoxGeometry(1.0, 0.65, 2.2);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x586069, roughness: 0.2, metalness: 0.7 });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 0.65;
+  body.castShadow = true;
+  scooterGroup.add(body);
+
+  // Aerodynamic Front Nose
+  const frontGeo = new THREE.ConeGeometry(0.55, 1.0, 4);
+  const front = new THREE.Mesh(frontGeo, bodyMat);
+  front.rotation.x = -Math.PI / 3;
+  front.position.set(0, 0.95, -1.05);
+  scooterGroup.add(front);
+
+  // Cyan 432Hz Headlight
+  const headGeo = new THREE.BoxGeometry(0.55, 0.22, 0.15);
+  const headMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+  const headlight = new THREE.Mesh(headGeo, headMat);
+  headlight.position.set(0, 0.85, -1.45);
+  scooterGroup.add(headlight);
+
+  // Red LED Taillight
+  const tailGeo = new THREE.BoxGeometry(0.55, 0.18, 0.1);
+  const tailMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+  const taillight = new THREE.Mesh(tailGeo, tailMat);
+  taillight.position.set(0, 0.8, 1.15);
+  scooterGroup.add(taillight);
+
+  // Wheels
+  const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.28, 16);
+  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+
+  const fWheel = new THREE.Mesh(wheelGeo, wheelMat);
+  fWheel.rotation.z = Math.PI / 2;
+  fWheel.position.set(0, 0.38, -1.0);
+  scooterGroup.add(fWheel);
+  wheels.push(fWheel);
+
+  const rWheel = new THREE.Mesh(wheelGeo, wheelMat);
+  rWheel.rotation.z = Math.PI / 2;
+  rWheel.position.set(0, 0.38, 0.9);
+  scooterGroup.add(rWheel);
+  wheels.push(rWheel);
+
+  // --- CHIBI BI (Driver) ---
+  const skinMat = new THREE.MeshLambertMaterial({ color: 0xffdfba }); // Cute skin tone
+
+  // Bi Head (Cute Chibi oversized head)
+  const biHeadGeo = new THREE.SphereGeometry(0.42, 16, 16);
+  const biHead = new THREE.Mesh(biHeadGeo, skinMat);
+  biHead.position.set(0, 2.05, -0.3);
+  scooterGroup.add(biHead);
+
+  // Bi Helmet (Dark Grey)
+  const biHelmGeo = new THREE.SphereGeometry(0.44, 16, 16, 0, Math.PI * 2, 0, Math.PI / 1.7);
+  const biHelmMat = new THREE.MeshLambertMaterial({ color: 0x24292e });
+  const biHelm = new THREE.Mesh(biHelmGeo, biHelmMat);
+  biHelm.position.set(0, 2.08, -0.3);
+  scooterGroup.add(biHelm);
+
+  // Bi Adventurer Green Jacket
+  const biBodyGeo = new THREE.BoxGeometry(0.75, 0.8, 0.55);
+  const biBodyMat = new THREE.MeshLambertMaterial({ color: 0x2ea043 }); // Rêu Dương
+  const biBody = new THREE.Mesh(biBodyGeo, biBodyMat);
+  biBody.position.set(0, 1.45, -0.3);
+  scooterGroup.add(biBody);
+
+  // Bi Giant Mechanical Wrench on his back!
+  const wrenchGeo = new THREE.BoxGeometry(0.14, 1.35, 0.14);
+  const wrenchMat = new THREE.MeshStandardMaterial({ color: 0xc0c8d4, metalness: 0.9, roughness: 0.2 });
+  const wrench = new THREE.Mesh(wrenchGeo, wrenchMat);
+  wrench.rotation.z = Math.PI / 3.8;
+  wrench.position.set(0.15, 1.6, -0.05);
+  scooterGroup.add(wrench);
+
+  // --- CHIBI HẠNH (Passenger) ---
+  // Hạnh Head
+  const hanhHeadGeo = new THREE.SphereGeometry(0.38, 16, 16);
+  const hanhHead = new THREE.Mesh(hanhHeadGeo, skinMat);
+  hanhHead.position.set(0, 1.95, 0.4);
+  scooterGroup.add(hanhHead);
+
+  // Hạnh White Helmet
+  const hanhHelmGeo = new THREE.SphereGeometry(0.40, 16, 16, 0, Math.PI * 2, 0, Math.PI / 1.7);
+  const hanhHelmMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const hanhHelm = new THREE.Mesh(hanhHelmGeo, hanhHelmMat);
+  hanhHelm.position.set(0, 1.98, 0.4);
+  scooterGroup.add(hanhHelm);
+
+  // Hạnh's Iconic 3D Cat Ears!
+  const earGeo = new THREE.ConeGeometry(0.12, 0.26, 4);
+  const earMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff }); // Glowing Cyan
+
+  const earL = new THREE.Mesh(earGeo, earMat);
+  earL.position.set(-0.25, 2.3, 0.4);
+  scooterGroup.add(earL);
+
+  const earR = new THREE.Mesh(earGeo, earMat);
+  earR.position.set(0.25, 2.3, 0.4);
+  scooterGroup.add(earR);
+
+  // Hạnh Violet Jacket (Holding Bi's waist)
+  const hanhBodyGeo = new THREE.BoxGeometry(0.65, 0.75, 0.5);
+  const hanhBodyMat = new THREE.MeshLambertMaterial({ color: 0x8957e5 }); // Tím Mèo Cổ
+  const hanhBody = new THREE.Mesh(hanhBodyGeo, hanhBodyMat);
+  hanhBody.position.set(0, 1.4, 0.4);
+  scooterGroup.add(hanhBody);
+
+  scooterGroup.position.set(0, 0, 0);
+  scene.add(scooterGroup);
+}
+
+// 5. Procedural Obstacles & Collectibles
+function spawnObstacle(z) {
+  const isTruck = Math.random() < 0.55;
+  const obs = new THREE.Group();
+  const laneX = (Math.random() * (ROAD_WIDTH - 4)) - (ROAD_WIDTH - 4)/2;
+
+  if (isTruck) {
+    // Cute Chibi Truck (Xe tải lấn làn)
+    const truckGeo = new THREE.BoxGeometry(2.4, 2.2, 4.5);
+    const truckMat = new THREE.MeshLambertMaterial({ color: 0xf97583 });
+    const truck = new THREE.Mesh(truckGeo, truckMat);
+    truck.position.y = 1.1;
+    obs.add(truck);
+
+    // Windshield
+    const winGeo = new THREE.BoxGeometry(2.2, 0.8, 0.1);
+    const winMat = new THREE.MeshBasicMaterial({ color: 0x0366d6 });
+    const win = new THREE.Mesh(winGeo, winMat);
+    win.position.set(0, 1.4, 2.26);
+    obs.add(win);
+    obs.userData = { type: 'truck', radius: 1.8 };
+  } else {
+    // Cute Rock Boulder (Đá tai mèo)
+    const rockGeo = new THREE.DodecahedronGeometry(1.2);
+    const rockMat = new THREE.MeshLambertMaterial({ color: 0x586069, flatShading: true });
+    const rock = new THREE.Mesh(rockGeo, rockMat);
+    rock.position.y = 0.9;
+    obs.add(rock);
+    obs.userData = { type: 'rock', radius: 1.3 };
+  }
+
+  obs.position.set(laneX, 0, z);
+  scene.add(obs);
+  obstacles.push(obs);
+}
+
+function spawnCollectible(z) {
+  const isTea = Math.random() < 0.5;
+  const col = new THREE.Group();
+  const laneX = (Math.random() * (ROAD_WIDTH - 3.5)) - (ROAD_WIDTH - 3.5)/2;
+
+  if (isTea) {
+    // 🍵 Chén trà 432Hz
+    const cupGeo = new THREE.CylinderGeometry(0.35, 0.25, 0.45, 12);
+    const cupMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    const cup = new THREE.Mesh(cupGeo, cupMat);
+    col.add(cup);
+    col.userData = { type: 'tea', radius: 1.1 };
+  } else {
+    // 🥭 Quả xoài Cú Mèo
+    const mangoGeo = new THREE.SphereGeometry(0.4, 8, 8);
+    const mangoMat = new THREE.MeshBasicMaterial({ color: 0xf0b429 });
+    const mango = new THREE.Mesh(mangoGeo, mangoMat);
+    mango.scale.set(1, 1.4, 0.8);
+    col.add(mango);
+    col.userData = { type: 'mango', radius: 1.1 };
+  }
+
+  col.position.set(laneX, 0.8, z);
+  scene.add(col);
+  collectibles.push(col);
+}
+
+// Initial populate
+for (let i = 1; i < 9; i++) {
+  spawnObstacle(-i * 45 - 20);
+  spawnCollectible(-i * 38 - 10);
+}
+
+// --- GYROSCOPE TILT & TOUCH CONTROLS ---
+function initGyro() {
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission()
+      .then(res => {
+        if (res === 'granted') {
+          window.addEventListener('deviceorientation', handleTilt);
+          gyroActive = true;
+          document.getElementById('gyro-text').innerText = "CẢM BIẾN NGHIÊNG: ĐÃ BẬT ✅";
+        }
+      })
+      .catch(() => {});
+  } else if ('ondeviceorientation' in window) {
+    window.addEventListener('deviceorientation', handleTilt);
+    gyroActive = true;
+    document.getElementById('gyro-text').innerText = "CẢM BIẾN NGHIÊNG: HOẠT ĐỘNG ✅";
+  }
+}
+
+function handleTilt(e) {
+  // e.gamma: roll (-90 to +90 deg). Positive is tilt right, negative is tilt left
+  if (e.gamma !== null) {
+    currentTiltDeg = Math.max(-35, Math.min(35, e.gamma));
+    document.getElementById('gyro-text').innerText = `NGHIÊNG: ${Math.round(currentTiltDeg)}°`;
+  }
+}
+
+document.getElementById('btn-toggle-gyro').onclick = () => {
+  initAudio();
+  initGyro();
+};
+
+function setupTouchAndKeys() {
+  // Keyboard
+  window.addEventListener('keydown', (e) => {
+    initAudio();
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+    if (e.code === 'Space' || e.code === 'KeyS' || e.code === 'ArrowDown') keys.brake = true;
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.gas = true;
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+    if (e.code === 'Space' || e.code === 'KeyS' || e.code === 'ArrowDown') keys.brake = false;
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.gas = false;
+  });
+
+  // Touch buttons
+  function bind(id, k) {
+    const el = document.getElementById(id);
+    const down = (e) => { e.preventDefault(); initAudio(); keys[k] = true; el.classList.add('active'); };
+    const up = (e) => { e.preventDefault(); keys[k] = false; el.classList.remove('active'); };
+    el.addEventListener('touchstart', down, { passive: false });
+    el.addEventListener('touchend', up, { passive: false });
+    el.addEventListener('mousedown', down);
+    el.addEventListener('mouseup', up);
+    el.addEventListener('mouseleave', up);
+  }
+
+  bind('btn-left', 'left');
+  bind('btn-right', 'right');
+  bind('btn-brake', 'brake');
+  bind('btn-gas', 'gas');
+}
+
+// --- MAIN LOOP & PHYSICS ---
+let lastT = performance.now();
+
+function animate(now) {
+  requestAnimationFrame(animate);
+
+  const dt = Math.min((now - lastT) / 1000, 0.1);
+  lastT = now;
+
+  if (isRunning) {
+    updatePhysics(dt);
+  }
+
+  renderer.render(scene, camera);
+}
+
+function updatePhysics(dt) {
+  // 1. Dốc 10% Gravity Acceleration
+  const gravityPull = 16.0; // km/h/s
+
+  if (keys.brake) {
+    speed -= 35.0 * dt;
+    brakeTemp += 45.0 * dt; // Rà phanh sinh nhiệt
+    playSfx('brake');
+  } else if (keys.gas) {
+    speed += 20.0 * dt;
+    brakeTemp -= 8.0 * dt;
+  } else {
+    speed += gravityPull * dt; // Đổ dốc tự do gia tốc
+    brakeTemp -= 12.0 * dt; // Gió tản nhiệt tự nhiên
+  }
+
+  speed = Math.max(15, speed);
+  brakeTemp = Math.max(25, brakeTemp);
+
+  // Overheat Check (Cháy phanh)
+  if (brakeTemp > 280) {
+    playSfx('crash');
+    triggerGameOver("CHÁY PHANH LAO VỰC!", "Bi rà phanh liên tục trên dốc 10% khiến nhiệt độ vượt 300°C làm sôi dầu phanh, mất lực hãm hoàn toàn! Hãy nhấp nhả phanh theo nhịp!");
+    return;
+  }
+
+  // 2. Steering: Combined Tilt Gyro + Buttons
+  let steerInput = 0;
+  if (keys.left) steerInput -= 1.0;
+  if (keys.right) steerInput += 1.0;
+  if (gyroActive && Math.abs(currentTiltDeg) > 4) {
+    steerInput += (currentTiltDeg / 22);
+  }
+
+  lateralSpeed = steerInput * 7.5;
+  lateralPos += lateralSpeed * dt;
+
+  // Road Bounds Check
+  const maxLat = (ROAD_WIDTH / 2) - 1.2;
+  if (lateralPos < -maxLat || lateralPos > maxLat) {
+    playSfx('crash');
+    triggerGameOver("HÚC VÀO HỘ LAN ĐÈO!", "Xe ôm cua quá tốc độ bị văng ra khỏi lòng đường! Hãy giảm tốc độ trước khi vào khúc ngoặt!");
+    return;
+  }
+
+  // Scooter Transform & Dynamic Leaning (Nghiêng xe ôm cua)
+  scooterGroup.position.x = lateralPos;
+  scooterGroup.rotation.z = -lateralSpeed * 0.055; // Lean bike into turn!
+  scooterGroup.rotation.y = -lateralSpeed * 0.03;
+
+  // Spin Wheels
+  wheels.forEach(w => w.rotation.x -= speed * dt * 0.4);
+
+  // 3. Move Road & Environment (Forward Motion)
+  const forwardStep = (speed * 1000 / 3600) * dt;
+  distanceMeters += forwardStep;
+
+  roadSegments.forEach(seg => {
+    seg.position.z += forwardStep;
+    if (seg.position.z > SEGMENT_LEN * 2) {
+      seg.position.z -= NUM_SEGMENTS * SEGMENT_LEN;
+    }
+  });
+
+  // Slowly drift clouds & mountains
+  cloudMeshes.forEach(c => {
+    c.position.x += 1.5 * dt;
+    if (c.position.x > 80) c.position.x = -80;
+  });
+
+  mountainMeshes.forEach(mtn => {
+    mtn.position.z += forwardStep * 0.2;
+    if (mtn.position.z > 20) mtn.position.z -= 700;
+  });
+
+  // 4. Update Obstacles
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const obs = obstacles[i];
+    obs.position.z += forwardStep;
+
+    const dz = Math.abs(obs.position.z - scooterGroup.position.z);
+    const dx = Math.abs(obs.position.x - scooterGroup.position.x);
+
+    if (dz < 1.6 && dx < obs.userData.radius) {
+      playSfx('crash');
+      triggerGameOver("VA CHẠM VẬT CẢN TRÊN ĐÈO!", `Bi đã đâm vào ${obs.userData.type==='truck'?'Xe Tải lấn làn':'Đá tai mèo sạt lở'}!`);
+      return;
+    }
+
+    if (obs.position.z > 15) {
+      scene.remove(obs);
+      obstacles.splice(i, 1);
+      spawnObstacle(-360 - Math.random() * 60);
+    }
+  }
+
+  // 5. Update Collectibles
+  for (let i = collectibles.length - 1; i >= 0; i--) {
+    const col = collectibles[i];
+    col.position.z += forwardStep;
+    col.rotation.y += 2.5 * dt;
+
+    const dz = Math.abs(col.position.z - scooterGroup.position.z);
+    const dx = Math.abs(col.position.x - scooterGroup.position.x);
+
+    if (dz < 1.4 && dx < col.userData.radius) {
+      playSfx('pickup');
+      itemsCollected++;
+      if (col.userData.type === 'tea') {
+        brakeTemp = Math.max(25, brakeTemp - 60); // Nước trà tưới mát phanh!
+      }
+      scene.remove(col);
+      collectibles.splice(i, 1);
+      spawnCollectible(-320 - Math.random() * 50);
+    } else if (col.position.z > 15) {
+      scene.remove(col);
+      collectibles.splice(i, 1);
+      spawnCollectible(-320 - Math.random() * 50);
+    }
+  }
+
+  // Camera Follow
+  camera.position.x = lateralPos * 0.45;
+  camera.lookAt(lateralPos * 0.6, 1.2, -12);
+
+  updateHUD();
+}
+
+function updateHUD() {
+  document.getElementById('hud-speed').innerText = Math.round(speed);
+  document.getElementById('hud-dist').innerText = `${(distanceMeters / 1000).toFixed(1)} km`;
+  document.getElementById('hud-score').innerText = itemsCollected;
+
+  const fill = document.getElementById('hud-brake-fill');
+  const badge = document.getElementById('hud-brake-badge');
+  const ratio = Math.min(100, (brakeTemp / 280) * 100);
+  fill.style.width = `${ratio}%`;
+
+  if (brakeTemp < 120) {
+    fill.style.background = '#28a745';
+    badge.innerText = "PHANH TỐT";
+    badge.style.background = '#28a745';
+  } else if (brakeTemp < 200) {
+    fill.style.background = '#d97706';
+    badge.innerText = "PHANH NÓNG";
+    badge.style.background = '#d97706';
+  } else {
+    fill.style.background = '#d73a49';
+    badge.innerText = "SẮP CHÁY PHANH!";
+    badge.style.background = '#d73a49';
+  }
+}
+
+function startGame() {
+  initAudio();
+  initGyro();
+  document.getElementById('start-modal').style.display = 'none';
+  document.getElementById('gameover-modal').style.display = 'none';
+  isRunning = true;
+  lastT = performance.now();
+}
+
+function triggerGameOver(title, desc) {
+  isRunning = false;
+  document.getElementById('go-title').innerText = title;
+  document.getElementById('go-desc').innerText = desc;
+  document.getElementById('go-dist').innerText = `${(distanceMeters / 1000).toFixed(2)} km`;
+  document.getElementById('gameover-modal').style.display = 'flex';
+}
+
+function restartGame() {
+  speed = 35;
+  lateralPos = 0;
+  lateralSpeed = 0;
+  brakeTemp = 30;
+  distanceMeters = 0;
+  itemsCollected = 0;
+
+  obstacles.forEach(o => scene.remove(o));
+  collectibles.forEach(c => scene.remove(c));
+  obstacles = [];
+  collectibles = [];
+
+  for (let i = 1; i < 9; i++) {
+    spawnObstacle(-i * 45 - 20);
+    spawnCollectible(-i * 38 - 10);
+  }
+
+  startGame();
+}
+
+window.addEventListener('resize', () => {
+  if (camera && renderer) {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+});
+
+window.onload = () => {
+  initThreeScene();
+  setupTouchAndKeys();
+  requestAnimationFrame(animate);
+};
+</script>
+</body>
+</html>
